@@ -1,0 +1,382 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---- TOKEN BRIDGE ----
+   Tailwind utilities read these; the values live in the :root blocks below,
+   so a theme change is a variable change, never a component change. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* ---- LIGHT THEME ----
+   Brand is indigo: distinct from the sibling ERP's green, because colour is
+   how people tell two internal tools apart at a glance. */
+:root {
+  --brand-50:  #eef2ff;
+  --brand-100: #e0e7ff;
+  --brand-200: #c7d2fe;
+  --brand-300: #a5b4fc;
+  --brand-400: #818cf8;
+  --brand-500: #6366f1;
+  --brand-600: #4f46e5;
+  --brand-700: #4338ca;
+  --brand-800: #3730a3;
+  --brand-900: #312e81;
+  --brand-950: #1e1b4b;
+
+  --background: #f7f8fa;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: var(--brand-600);
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: var(--brand-50);
+  --accent-foreground: var(--brand-700);
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --warning: #ca8a04;
+  --info: #0284c7;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --ring: var(--brand-500);
+
+  /* Inlined so the native select keeps one chevron across browsers; the stroke
+     is a literal because a CSS var cannot reach inside a data: URL. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%2364748b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #334155;
+  --sidebar-accent: var(--brand-50);
+  --sidebar-border: #e9edf2;
+
+  --radius: 0.625rem;
+
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  --shadow-pop: 0 10px 30px -12px rgb(15 23 42 / 0.25);
+
+  /* ---- STATUS TOKENS (spec 4) ----
+     Four variables per status. Adding a status is four lines here and zero
+     component changes -- the badge reads them by name. */
+  --status-new-fg: #1e40af;        --status-new-bg: #dbeafe;
+  --status-new-bd: #bfdbfe;        --status-new-solid: #3b82f6;
+  --status-assigned-fg: #5b21b6;   --status-assigned-bg: #ede9fe;
+  --status-assigned-bd: #ddd6fe;   --status-assigned-solid: #8b5cf6;
+  --status-inprogress-fg: #9a3412; --status-inprogress-bg: #ffedd5;
+  --status-inprogress-bd: #fed7aa; --status-inprogress-solid: #f97316;
+  --status-testing-fg: #155e75;    --status-testing-bg: #cffafe;
+  --status-testing-bd: #a5f3fc;    --status-testing-solid: #06b6d4;
+  --status-onhold-fg: #57534e;     --status-onhold-bg: #f5f5f4;
+  --status-onhold-bd: #e7e5e4;     --status-onhold-solid: #78716c;
+  --status-resolved-fg: #166534;   --status-resolved-bg: #dcfce7;
+  --status-resolved-bd: #bbf7d0;   --status-resolved-solid: #22c55e;
+  --status-closed-fg: #334155;     --status-closed-bg: #e2e8f0;
+  --status-closed-bd: #cbd5e1;     --status-closed-solid: #475569;
+  --status-reopened-fg: #9f1239;   --status-reopened-bg: #ffe4e6;
+  --status-reopened-bd: #fecdd3;   --status-reopened-solid: #e11d48;
+  --status-rejected-fg: #7f1d1d;   --status-rejected-bg: #fee2e2;
+  --status-rejected-bd: #fecaca;   --status-rejected-solid: #b91c1c;
+
+  /* ---- PRIORITY TOKENS (spec 7) ---- */
+  --priority-critical-fg: #991b1b; --priority-critical-bg: #fee2e2;
+  --priority-critical-bd: #fecaca; --priority-critical-solid: #dc2626;
+  --priority-high-fg: #9a3412;     --priority-high-bg: #ffedd5;
+  --priority-high-bd: #fed7aa;     --priority-high-solid: #ea580c;
+  --priority-medium-fg: #854d0e;   --priority-medium-bg: #fef9c3;
+  --priority-medium-bd: #fde68a;   --priority-medium-solid: #ca8a04;
+  --priority-low-fg: #1e40af;      --priority-low-bg: #dbeafe;
+  --priority-low-bd: #bfdbfe;      --priority-low-solid: #2563eb;
+
+  /* ---- SEVERITY TOKENS (spec 8) ----
+     Visually distinct from priority: spec 8 insists the two are separate
+     concepts, so they must not look interchangeable. */
+  --severity-blocker-fg: #7f1d1d;  --severity-blocker-bg: #fee2e2;
+  --severity-blocker-bd: #fca5a5;  --severity-blocker-solid: #991b1b;
+  --severity-critical-fg: #9f1239; --severity-critical-bg: #ffe4e6;
+  --severity-critical-bd: #fecdd3; --severity-critical-solid: #dc2626;
+  --severity-major-fg: #9a3412;    --severity-major-bg: #ffedd5;
+  --severity-major-bd: #fed7aa;    --severity-major-solid: #ea580c;
+  --severity-minor-fg: #854d0e;    --severity-minor-bg: #fef9c3;
+  --severity-minor-bd: #fde68a;    --severity-minor-solid: #ca8a04;
+  --severity-cosmetic-fg: #475569; --severity-cosmetic-bg: #f1f5f9;
+  --severity-cosmetic-bd: #e2e8f0; --severity-cosmetic-solid: #64748b;
+
+  /* ---- AGING BANDS (spec 13) ---- */
+  --aging-normal-fg: #166534;    --aging-normal-bg: #dcfce7;
+  --aging-attention-fg: #854d0e; --aging-attention-bg: #fef9c3;
+  --aging-warning-fg: #9a3412;   --aging-warning-bg: #ffedd5;
+  --aging-critical-fg: #991b1b;  --aging-critical-bg: #fee2e2;
+
+  --chart-1: var(--brand-500);
+  --chart-2: #06b6d4;
+  --chart-3: #22c55e;
+  --chart-4: #f59e0b;
+  --chart-5: #ec4899;
+  --chart-6: #8b5cf6;
+}
+
+/* ---- DARK THEME ---- */
+.dark {
+  --background: #0b1120;
+  --foreground: #e2e8f0;
+  --card: #111a2e;
+  --card-foreground: #e2e8f0;
+  --popover: #111a2e;
+  --popover-foreground: #e2e8f0;
+  --primary: var(--brand-400);
+  --primary-foreground: #0b1120;
+  --secondary: #1e293b;
+  --secondary-foreground: #e2e8f0;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e2a4a;
+  --accent-foreground: var(--brand-200);
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #22c55e;
+  --warning: #eab308;
+  --info: #38bdf8;
+  --border: #1e293b;
+  --input: #334155;
+  --ring: var(--brand-400);
+
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%2394a3b8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+
+  --sidebar: #0e1729;
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-accent: #1e2a4a;
+  --sidebar-border: #1b2740;
+
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 0 rgb(0 0 0 / 0.4);
+  --shadow-pop: 0 10px 30px -12px rgb(0 0 0 / 0.6);
+
+  --status-new-fg: #93c5fd;        --status-new-bg: #1e3a5f;
+  --status-new-bd: #1e40af;        --status-new-solid: #3b82f6;
+  --status-assigned-fg: #c4b5fd;   --status-assigned-bg: #2e1065;
+  --status-assigned-bd: #5b21b6;   --status-assigned-solid: #8b5cf6;
+  --status-inprogress-fg: #fdba74; --status-inprogress-bg: #431407;
+  --status-inprogress-bd: #9a3412; --status-inprogress-solid: #f97316;
+  --status-testing-fg: #67e8f9;    --status-testing-bg: #083344;
+  --status-testing-bd: #155e75;    --status-testing-solid: #06b6d4;
+  --status-onhold-fg: #d6d3d1;     --status-onhold-bg: #292524;
+  --status-onhold-bd: #57534e;     --status-onhold-solid: #a8a29e;
+  --status-resolved-fg: #86efac;   --status-resolved-bg: #052e16;
+  --status-resolved-bd: #166534;   --status-resolved-solid: #22c55e;
+  --status-closed-fg: #cbd5e1;     --status-closed-bg: #1e293b;
+  --status-closed-bd: #334155;     --status-closed-solid: #64748b;
+  --status-reopened-fg: #fda4af;   --status-reopened-bg: #4c0519;
+  --status-reopened-bd: #9f1239;   --status-reopened-solid: #e11d48;
+  --status-rejected-fg: #fca5a5;   --status-rejected-bg: #450a0a;
+  --status-rejected-bd: #991b1b;   --status-rejected-solid: #dc2626;
+
+  --priority-critical-fg: #fca5a5; --priority-critical-bg: #450a0a;
+  --priority-critical-bd: #991b1b; --priority-critical-solid: #ef4444;
+  --priority-high-fg: #fdba74;     --priority-high-bg: #431407;
+  --priority-high-bd: #9a3412;     --priority-high-solid: #f97316;
+  --priority-medium-fg: #fde047;   --priority-medium-bg: #422006;
+  --priority-medium-bd: #854d0e;   --priority-medium-solid: #eab308;
+  --priority-low-fg: #93c5fd;      --priority-low-bg: #172554;
+  --priority-low-bd: #1e40af;      --priority-low-solid: #3b82f6;
+
+  --severity-blocker-fg: #fca5a5;  --severity-blocker-bg: #450a0a;
+  --severity-blocker-bd: #7f1d1d;  --severity-blocker-solid: #dc2626;
+  --severity-critical-fg: #fda4af; --severity-critical-bg: #4c0519;
+  --severity-critical-bd: #9f1239; --severity-critical-solid: #e11d48;
+  --severity-major-fg: #fdba74;    --severity-major-bg: #431407;
+  --severity-major-bd: #9a3412;    --severity-major-solid: #f97316;
+  --severity-minor-fg: #fde047;    --severity-minor-bg: #422006;
+  --severity-minor-bd: #854d0e;    --severity-minor-solid: #eab308;
+  --severity-cosmetic-fg: #cbd5e1; --severity-cosmetic-bg: #1e293b;
+  --severity-cosmetic-bd: #334155; --severity-cosmetic-solid: #94a3b8;
+
+  --aging-normal-fg: #86efac;    --aging-normal-bg: #052e16;
+  --aging-attention-fg: #fde047; --aging-attention-bg: #422006;
+  --aging-warning-fg: #fdba74;   --aging-warning-bg: #431407;
+  --aging-critical-fg: #fca5a5;  --aging-critical-bg: #450a0a;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html,
+  body,
+  #root {
+    /* Full-height layouts (the login split screen, the app shell) measure
+       against these. Without an explicit chain, #root collapses to its content
+       height and a min-h-svh child stops short of the viewport. */
+    min-height: 100%;
+  }
+
+  html {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* A select showing its placeholder is greyed like an input placeholder, so
+     the open list must restate its own colors or every option inherits that
+     grey against the popup background. */
+  select option {
+    color: var(--foreground);
+    background-color: var(--card);
+  }
+
+  /* Focus must always be visible (spec 49). No component may remove this
+     without providing an equivalent ring. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--muted-foreground) 30%, transparent);
+    border-radius: 6px;
+    border: 2px solid var(--background);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+  }
+}
+
+@layer components {
+  /* ---- BADGE ----
+     One rule serving status, priority and severity. The four colours arrive as
+     inline custom properties, so there is a single badge implementation in the
+     codebase (spec 3 forbids duplicating a repeated pattern). */
+  .zbadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: nowrap;
+    color: var(--zbadge-fg);
+    background-color: var(--zbadge-bg);
+    border: 1px solid var(--zbadge-bd);
+  }
+
+  .zbadge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background-color: var(--zbadge-solid);
+    flex-shrink: 0;
+  }
+
+  .zcard {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Compact data rows: spec 25 warns against oversized rows in a data-heavy
+     internal system. */
+  .ztable-cell {
+    padding: 0.375rem 0.625rem;
+    font-size: 13px;
+    line-height: 1.35;
+    vertical-align: middle;
+  }
+
+  .ztable-head,
+  .ztable-head button {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+  }
+
+  .ztable-head {
+    padding: 0.5rem 0.625rem;
+    text-align: left;
+  }
+}
+
+@keyframes zpulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@keyframes zfloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes zdash {
+  to { stroke-dashoffset: -1000; }
+}
+
+/* ---- REDUCED MOTION (spec 20.4, 49) ----
+   A global off-switch. JS-driven motion is gated separately in
+   usePrefersReducedMotion so it never even starts. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; font-size: 11px; }
+  .zcard { box-shadow: none; border-color: #ddd; }
+}

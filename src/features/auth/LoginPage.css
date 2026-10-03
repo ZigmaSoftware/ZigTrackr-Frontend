@@ -1,0 +1,1508 @@
+/* Ported from zigma_bug_tracker_awwwards_login_v5_open_signal_field.html. */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap");
+/* Match browser defaults used by the standalone reference before Tailwind's reset. */
+.zigma-login {
+  font-size: 16px;
+  line-height: normal;
+  color-scheme: dark;
+}
+.zigma-login svg {
+  display: inline;
+  vertical-align: baseline;
+}
+.zigma-login button,
+.zigma-login input {
+  letter-spacing: normal;
+}
+
+.zigma-login {
+  --bg: #06070a;
+  --bg-soft: #0a0d12;
+  --panel: rgba(12, 16, 23, 0.78);
+  --panel-2: rgba(16, 22, 30, 0.72);
+  --white: #f5f8fb;
+  --muted: #8e9aaa;
+  --muted-2: #5f6a78;
+  --cyan: #55d7ff;
+  --mint: #9cf7cf;
+  --lime: #d5ff87;
+  --red: #ff7d86;
+  --violet: #a592ff;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --radius-xl: 34px;
+  --radius-lg: 26px;
+  --radius-md: 18px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.zigma-login * {
+  box-sizing: border-box;
+}
+
+.zigma-login {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--white);
+  font-family: "Outfit", system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+.zigma-login {
+  min-height: 100dvh;
+  display: grid;
+  place-items: stretch;
+  background:
+    radial-gradient(
+      circle at 11% 8%,
+      rgba(85, 215, 255, 0.09),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 82% 12%,
+      rgba(213, 255, 135, 0.05),
+      transparent 22%
+    ),
+    radial-gradient(
+      circle at 70% 82%,
+      rgba(156, 247, 207, 0.06),
+      transparent 28%
+    ),
+    #06070a;
+}
+
+.zigma-login button,
+.zigma-login input {
+  font: inherit;
+}
+
+.zigma-login button {
+  border: 0;
+}
+
+.zigma-login a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.zigma-login ::selection {
+  background: rgba(85, 215, 255, 0.22);
+  color: var(--white);
+}
+
+.zigma-login .page {
+  position: relative;
+  min-height: 100dvh;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.014), transparent 35%),
+    transparent;
+}
+
+.zigma-login .page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+.zigma-login .ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: -3;
+}
+
+.zigma-login .ambient__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(0px);
+  opacity: 0.9;
+  will-change: transform;
+}
+
+.zigma-login .ambient__orb--a {
+  width: min(44vw, 720px);
+  aspect-ratio: 1;
+  left: -15vw;
+  top: 8vh;
+  background: radial-gradient(
+    circle,
+    rgba(85, 215, 255, 0.13),
+    rgba(85, 215, 255, 0.015) 48%,
+    transparent 70%
+  );
+}
+
+.zigma-login .ambient__orb--b {
+  width: min(34vw, 520px);
+  aspect-ratio: 1;
+  right: -10vw;
+  bottom: -4vh;
+  background: radial-gradient(
+    circle,
+    rgba(213, 255, 135, 0.08),
+    rgba(213, 255, 135, 0.008) 52%,
+    transparent 72%
+  );
+}
+
+.zigma-login .cursor-lens {
+  position: fixed;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  background: radial-gradient(
+    circle,
+    rgba(85, 215, 255, 0.07),
+    transparent 66%
+  );
+  transform: translate3d(-50%, -50%, 0);
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.zigma-login .neon-field {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.92;
+  mix-blend-mode: screen;
+  filter: saturate(1.12) contrast(1.03);
+}
+
+.zigma-login .neon-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 5;
+  transform: translate3d(-50%, -50%, 0);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: radial-gradient(
+    circle at 35% 32%,
+    rgba(255, 255, 255, 0.96),
+    rgba(85, 215, 255, 0.48) 38%,
+    rgba(9, 17, 26, 0.18) 70%,
+    transparent 73%
+  );
+  box-shadow:
+    0 0 0 8px rgba(255, 255, 255, 0.028),
+    0 0 24px rgba(85, 215, 255, 0.48),
+    0 0 56px rgba(165, 146, 255, 0.28);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.zigma-login .neon-cursor::before,
+.zigma-login .neon-cursor::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.zigma-login .neon-cursor::before {
+  width: 62px;
+  height: 62px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  animation: cursorPulse 1.6s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+}
+
+.zigma-login .neon-cursor::after {
+  width: 116px;
+  height: 116px;
+  border: 1px dashed rgba(156, 247, 207, 0.18);
+  animation: cursorSpin 7s linear infinite;
+}
+
+@keyframes cursorPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.76);
+    opacity: 0.72;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 0.08;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.14);
+    opacity: 0;
+  }
+}
+
+@keyframes cursorSpin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.zigma-login .loader {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: #050609;
+  overflow: hidden;
+}
+
+.zigma-login .loader__inner {
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+}
+
+.zigma-login .loader__mark {
+  width: 58px;
+  height: 58px;
+  border-radius: 19px;
+  display: grid;
+  place-items: center;
+  color: #081014;
+  background: linear-gradient(135deg, var(--cyan), var(--mint));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+}
+
+.zigma-login .loader__mark svg {
+  width: 28px;
+  height: 28px;
+}
+
+.zigma-login .loader__text {
+  color: #d8e1e9;
+  font-size: 12px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.zigma-login .loader__bar {
+  width: 188px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.zigma-login .loader__bar span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, var(--cyan), var(--mint));
+}
+
+.zigma-login .topbar {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  right: 24px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.zigma-login .brand,
+.zigma-login .topbar__status {
+  pointer-events: auto;
+}
+
+.zigma-login .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--white);
+}
+
+.zigma-login .brand__mark {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #061116;
+  background: linear-gradient(135deg, var(--cyan), var(--mint));
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.48),
+    0 16px 50px rgba(61, 192, 229, 0.18);
+  overflow: hidden;
+}
+
+.zigma-login .brand__mark::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.8),
+    transparent 70%
+  );
+  transform: translateX(-120%) rotate(12deg);
+  animation: brandSweep 4.2s var(--ease) infinite 1.6s;
+}
+
+@keyframes brandSweep {
+  0%,
+  64% {
+    transform: translateX(-120%) rotate(12deg);
+    opacity: 0;
+  }
+  72% {
+    opacity: 0.8;
+  }
+  88%,
+  100% {
+    transform: translateX(120%) rotate(12deg);
+    opacity: 0;
+  }
+}
+
+.zigma-login .brand__mark svg {
+  width: 20px;
+  height: 20px;
+  z-index: 1;
+}
+
+.zigma-login .brand__copy {
+  display: grid;
+  gap: 1px;
+  line-height: 1.1;
+}
+
+.zigma-login .brand__copy strong {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.zigma-login .brand__copy span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.zigma-login .topbar__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: #c9d4de;
+  background: rgba(9, 12, 17, 0.54);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.zigma-login .status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 18px rgba(156, 247, 207, 0.7);
+}
+
+.zigma-login .layout {
+  position: relative;
+  z-index: 4;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(380px, 0.65fr);
+  gap: clamp(32px, 4vw, 72px);
+  align-items: center;
+  padding: 112px clamp(28px, 4vw, 72px) 52px;
+}
+
+.zigma-login .showcase {
+  position: relative;
+  min-height: 680px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 28px 0 14px;
+  perspective: 1400px;
+}
+
+.zigma-login .showcase__copy {
+  position: relative;
+  z-index: 5;
+  max-width: 880px;
+}
+
+.zigma-login .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #b8c7d4;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+.zigma-login .eyebrow::before {
+  content: "";
+  width: 32px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--cyan), transparent);
+}
+
+.zigma-login .headline {
+  margin: 0;
+  max-width: 1040px;
+  color: var(--white);
+  font-size: clamp(56px, 6.4vw, 108px);
+  line-height: 0.91;
+  letter-spacing: -0.058em;
+  font-weight: 500;
+}
+
+.zigma-login .headline .line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+}
+
+.zigma-login .headline .line > span {
+  display: inline-block;
+  will-change: transform;
+}
+
+.zigma-login .headline .accent {
+  color: transparent;
+  background: linear-gradient(90deg, #ffffff 10%, #9ee9ff 52%, #a8f2d1 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.zigma-login .showcase__subcopy {
+  width: min(590px, 75%);
+  margin: 28px 0 0;
+  color: var(--muted);
+  font-size: clamp(15px, 1.2vw, 18px);
+  line-height: 1.65;
+  letter-spacing: -0.015em;
+}
+
+.zigma-login .scene {
+  position: absolute;
+  left: 0;
+  right: 3%;
+  bottom: 20px;
+  height: 410px;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.zigma-login .scene__floor {
+  position: absolute;
+  width: 78%;
+  height: 320px;
+  left: -1%;
+  bottom: -142px;
+  transform: rotateX(74deg) rotateZ(-5deg);
+  transform-origin: center;
+  background-image:
+    linear-gradient(rgba(85, 215, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(85, 215, 255, 0.08) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1), transparent 78%);
+  opacity: 0.42;
+}
+
+.zigma-login .scene__halo {
+  position: absolute;
+  left: 18%;
+  top: 56%;
+  width: 420px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    rgba(85, 215, 255, 0.17),
+    rgba(85, 215, 255, 0.015) 55%,
+    transparent 74%
+  );
+  filter: blur(9px);
+  transform: translateY(-50%) rotate(-8deg);
+  opacity: 0.75;
+}
+
+.zigma-login .signal-field {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  transform-style: preserve-3d;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.zigma-login .signal-field::before {
+  content: "";
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  left: 12%;
+  top: 2%;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(
+      circle at center,
+      rgba(255, 255, 255, 0.05) 0 1px,
+      transparent 1px 44px
+    ),
+    radial-gradient(circle, rgba(85, 215, 255, 0.06), transparent 66%);
+  mask-image: radial-gradient(
+    circle,
+    #000 0 44%,
+    rgba(0, 0, 0, 0.7) 58%,
+    transparent 76%
+  );
+  opacity: 0.52;
+  animation: signalBreath 8s cubic-bezier(0.32, 0.72, 0, 1) infinite alternate;
+}
+
+.zigma-login .signal-field::after {
+  content: "";
+  position: absolute;
+  left: -6%;
+  right: 0;
+  bottom: 46px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(85, 215, 255, 0.28) 18%,
+    rgba(156, 247, 207, 0.16) 50%,
+    rgba(165, 146, 255, 0.2) 78%,
+    transparent
+  );
+  box-shadow: 0 0 22px rgba(85, 215, 255, 0.1);
+  transform: rotate(-7deg);
+  transform-origin: left center;
+  opacity: 0.72;
+}
+
+@keyframes signalBreath {
+  from {
+    transform: translate3d(-10px, 6px, 0) scale(0.98) rotate(-2deg);
+    opacity: 0.42;
+  }
+  to {
+    transform: translate3d(18px, -8px, 0) scale(1.04) rotate(2deg);
+    opacity: 0.62;
+  }
+}
+
+.zigma-login .signal-word {
+  position: absolute;
+  margin: 0;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.1);
+  font-size: clamp(54px, 6vw, 96px);
+  font-weight: 600;
+  line-height: 0.82;
+  letter-spacing: -0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  mix-blend-mode: screen;
+  opacity: 0.54;
+  will-change: transform, opacity;
+}
+
+.zigma-login .signal-word::after {
+  content: attr(data-word);
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(85, 215, 255, 0.1);
+  transform: translate3d(4px, 3px, 0);
+  opacity: 0.7;
+}
+
+.zigma-login .signal-word--track {
+  left: 1%;
+  top: 10%;
+  transform: rotate(-6deg);
+}
+.zigma-login .signal-word--assign {
+  left: 24%;
+  top: 36%;
+  font-size: clamp(46px, 5.3vw, 82px);
+  transform: rotate(2deg);
+  opacity: 0.42;
+}
+.zigma-login .signal-word--test {
+  left: 10%;
+  top: 64%;
+  font-size: clamp(42px, 4.7vw, 72px);
+  transform: rotate(-3deg);
+  opacity: 0.38;
+}
+.zigma-login .signal-word--resolve {
+  left: 42%;
+  top: 66%;
+  font-size: clamp(50px, 5.7vw, 88px);
+  transform: rotate(4deg);
+  opacity: 0.5;
+}
+
+.zigma-login .workflow-axis {
+  position: absolute;
+  left: 3%;
+  right: 8%;
+  top: 55%;
+  height: 96px;
+  transform: rotate(-7deg);
+  transform-origin: left center;
+}
+
+.zigma-login .workflow-axis__line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 48px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(85, 215, 255, 0.58),
+    rgba(156, 247, 207, 0.38),
+    rgba(213, 255, 135, 0.32),
+    rgba(165, 146, 255, 0.36),
+    transparent
+  );
+  box-shadow: 0 0 16px rgba(85, 215, 255, 0.13);
+}
+
+.zigma-login .workflow-axis__packet {
+  position: absolute;
+  top: 43px;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #dff9ff;
+  box-shadow:
+    0 0 16px rgba(85, 215, 255, 0.9),
+    0 0 36px rgba(85, 215, 255, 0.42);
+  animation: packetTravel 6.4s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+}
+
+@keyframes packetTravel {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.7);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  48% {
+    transform: translate3d(330px, -2px, 0) scale(1);
+    opacity: 1;
+  }
+  82% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(650px, 1px, 0) scale(0.72);
+    opacity: 0;
+  }
+}
+
+.zigma-login .workflow-step {
+  position: absolute;
+  top: 31px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(214, 224, 234, 0.72);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transform: rotate(7deg);
+  transform-origin: center;
+  white-space: nowrap;
+}
+
+.zigma-login .workflow-step::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 16px currentColor;
+}
+
+.zigma-login .workflow-step--1 {
+  left: 1%;
+  color: #55d7ff;
+}
+.zigma-login .workflow-step--2 {
+  left: 30%;
+  color: #9cf7cf;
+}
+.zigma-login .workflow-step--3 {
+  left: 60%;
+  color: #d5ff87;
+}
+.zigma-login .workflow-step--4 {
+  right: 0;
+  color: #a592ff;
+}
+
+.zigma-login .scene-note {
+  position: absolute;
+  left: 2%;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #7d8997;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.zigma-login .scene-note::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--cyan), transparent);
+}
+
+.zigma-login .scene-note strong {
+  color: #bac6d2;
+  font-weight: 500;
+}
+
+.zigma-login .showcase__footer {
+  position: relative;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #758292;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.zigma-login .showcase__footer span:first-child {
+  color: #a8b4c0;
+}
+
+.zigma-login .showcase__footer i {
+  width: 24px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.zigma-login .auth-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  justify-self: end;
+  perspective: 1200px;
+}
+
+.zigma-login .auth-shell {
+  position: relative;
+  padding: 7px;
+  border-radius: calc(var(--radius-xl) + 7px);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 40px 120px rgba(0, 0, 0, 0.36);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.zigma-login .auth-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--angle, 0deg),
+    transparent 0deg,
+    rgba(85, 215, 255, 0.58) 70deg,
+    transparent 130deg,
+    rgba(156, 247, 207, 0.24) 240deg,
+    transparent 315deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.zigma-login .auth-card {
+  position: relative;
+  border-radius: var(--radius-xl);
+  padding: clamp(28px, 4vw, 46px);
+  background:
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(85, 215, 255, 0.08),
+      transparent 25%
+    ),
+    linear-gradient(180deg, rgba(17, 23, 31, 0.95), rgba(10, 14, 20, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+  overflow: hidden;
+  transform-style: preserve-3d;
+}
+
+.zigma-login .auth-card::after {
+  content: "";
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  right: -120px;
+  top: -120px;
+  background: radial-gradient(
+    circle,
+    rgba(85, 215, 255, 0.07),
+    transparent 67%
+  );
+  pointer-events: none;
+}
+
+.zigma-login .auth-card__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 46px;
+}
+
+.zigma-login .auth-card__secure {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #8694a4;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.zigma-login .auth-card__secure svg {
+  width: 14px;
+  height: 14px;
+  color: var(--mint);
+}
+
+.zigma-login .auth-card__index {
+  color: #596574;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+}
+
+.zigma-login .auth-title {
+  margin: 0;
+  font-size: clamp(34px, 4vw, 50px);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  color: #f5f8fb;
+}
+
+.zigma-login .auth-copy {
+  margin: 14px 0 0;
+  max-width: 390px;
+  color: #8795a4;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.zigma-login .form {
+  margin-top: 34px;
+  display: grid;
+  gap: 20px;
+}
+
+.zigma-login .field {
+  position: relative;
+  display: grid;
+  gap: 9px;
+}
+
+.zigma-login .field label {
+  color: #afbac5;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.zigma-login .input-shell {
+  position: relative;
+  border-radius: 18px;
+  padding: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  transition:
+    transform 700ms var(--ease),
+    background 700ms var(--ease);
+}
+
+.zigma-login .input-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(85, 215, 255, 0.68),
+    rgba(156, 247, 207, 0.38)
+  );
+  transition: opacity 700ms var(--ease);
+  pointer-events: none;
+}
+
+.zigma-login .input-shell:focus-within {
+  transform: translateY(-2px);
+  background: transparent;
+}
+
+.zigma-login .input-shell:focus-within::before {
+  opacity: 1;
+}
+
+.zigma-login .input-core {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 0 16px;
+  border-radius: 17px;
+  background: rgba(7, 10, 15, 0.94);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.zigma-login .input-core svg {
+  width: 17px;
+  height: 17px;
+  color: #657383;
+  flex: 0 0 auto;
+  transition:
+    color 600ms var(--ease),
+    transform 600ms var(--ease);
+}
+
+.zigma-login .input-shell:focus-within .input-core > svg {
+  color: var(--cyan);
+  transform: translateY(-1px);
+}
+
+.zigma-login .input-core input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  color: #f4f8fb;
+  background: transparent;
+  font-size: 14px;
+  caret-color: var(--cyan);
+}
+
+.zigma-login .input-core input::placeholder {
+  color: #4f5a67;
+}
+
+.zigma-login .password-toggle {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: #768493;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color 600ms var(--ease),
+    background 600ms var(--ease),
+    transform 600ms var(--ease);
+}
+
+.zigma-login .password-toggle:hover,
+.zigma-login .password-toggle:focus-visible {
+  color: #d7e3eb;
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(1.04);
+  outline: none;
+}
+
+.zigma-login .password-toggle svg {
+  width: 17px;
+  height: 17px;
+}
+
+.zigma-login .form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: -2px;
+}
+
+.zigma-login .check {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #8996a4;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.zigma-login .check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.zigma-login .check__box {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: #090c11;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition:
+    background 500ms var(--ease),
+    transform 500ms var(--ease),
+    box-shadow 500ms var(--ease);
+}
+
+.zigma-login .check__box svg {
+  width: 11px;
+  height: 11px;
+  color: #071011;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 400ms var(--ease),
+    transform 400ms var(--ease);
+}
+
+.zigma-login .check input:checked + .check__box {
+  background: var(--mint);
+  box-shadow: none;
+  transform: scale(1.04);
+}
+
+.zigma-login .check input:checked + .check__box svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.zigma-login .check input:focus-visible + .check__box {
+  box-shadow:
+    0 0 0 3px rgba(85, 215, 255, 0.18),
+    inset 0 0 0 1px rgba(85, 215, 255, 0.6);
+}
+
+.zigma-login .assist-link {
+  color: #95a5b5;
+  font-size: 12px;
+  transition: color 500ms var(--ease);
+}
+
+.zigma-login .assist-link:hover,
+.zigma-login .assist-link:focus-visible {
+  color: #dbe7ef;
+  outline: none;
+}
+
+.zigma-login .submit {
+  position: relative;
+  min-height: 58px;
+  margin-top: 2px;
+  border-radius: 999px;
+  padding: 7px 7px 7px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: #061015;
+  background: linear-gradient(90deg, #82e7ff, #a6f4cf);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow:
+    0 12px 46px rgba(85, 215, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64);
+  transition:
+    transform 600ms var(--ease),
+    box-shadow 600ms var(--ease);
+  will-change: transform;
+}
+
+.zigma-login .submit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.45) 46%,
+    transparent 72%
+  );
+  transform: translateX(-120%);
+  transition: transform 900ms var(--ease);
+  pointer-events: none;
+}
+
+.zigma-login .submit:hover::before {
+  transform: translateX(120%);
+}
+
+.zigma-login .submit:hover {
+  box-shadow:
+    0 18px 58px rgba(85, 215, 255, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64);
+}
+
+.zigma-login .submit:active {
+  transform: scale(0.985);
+}
+
+.zigma-login .submit:focus-visible {
+  outline: 3px solid rgba(85, 215, 255, 0.2);
+  outline-offset: 3px;
+}
+
+.zigma-login .submit__label {
+  position: relative;
+  z-index: 1;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.zigma-login .submit__icon {
+  position: relative;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #effcff;
+  background: #071015;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 600ms var(--ease);
+}
+
+.zigma-login .submit:hover .submit__icon {
+  transform: translateX(2px) rotate(-4deg) scale(1.04);
+}
+
+.zigma-login .submit__icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.zigma-login .submit__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: rgba(3, 12, 15, 0.5);
+}
+
+.zigma-login .auth-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 24px;
+  color: #657181;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+
+.zigma-login .auth-foot svg {
+  width: 13px;
+  height: 13px;
+  color: #778596;
+}
+
+.zigma-login .scanbeam {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.36;
+}
+
+.zigma-login .scanbeam::before {
+  content: "";
+  position: absolute;
+  left: -20%;
+  width: 140%;
+  height: 70px;
+  top: -120px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(85, 215, 255, 0.035),
+    transparent
+  );
+  transform: translateY(var(--scan-y, 0px)) rotate(-8deg);
+  will-change: transform;
+}
+
+.zigma-login .corner-code {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  color: rgba(255, 255, 255, 0.15);
+  font-size: 8px;
+  line-height: 1.55;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  pointer-events: none;
+  writing-mode: vertical-rl;
+}
+
+.zigma-login .reveal {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+@media (max-width: 1180px) {
+  .zigma-login .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 480px);
+  }
+
+  .zigma-login .scene {
+    right: -10%;
+  }
+}
+
+@media (max-width: 960px) {
+  .zigma-login .layout {
+    grid-template-columns: 1fr;
+    gap: 44px;
+    align-items: start;
+    padding-top: 110px;
+  }
+
+  .zigma-login .showcase {
+    min-height: 500px;
+    padding-bottom: 0;
+  }
+
+  .zigma-login .showcase__copy {
+    max-width: 760px;
+  }
+
+  .zigma-login .headline {
+    font-size: clamp(56px, 11vw, 88px);
+  }
+
+  .zigma-login .showcase__subcopy {
+    width: min(640px, 90%);
+  }
+
+  .zigma-login .scene {
+    left: 2%;
+    right: 0;
+    bottom: -44px;
+    transform: scale(0.88);
+    transform-origin: left bottom;
+  }
+
+  .zigma-login .auth-wrap {
+    justify-self: stretch;
+    max-width: none;
+    margin-bottom: 48px;
+  }
+
+  .zigma-login .showcase__footer {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .zigma-login .page {
+    overflow-y: auto;
+  }
+
+  .zigma-login .topbar {
+    top: 16px;
+    left: 16px;
+    right: 16px;
+  }
+
+  .zigma-login .brand__copy span,
+  .zigma-login .topbar__status span:last-child {
+    display: none;
+  }
+
+  .zigma-login .layout {
+    padding: 92px 16px 28px;
+    gap: 28px;
+  }
+
+  .zigma-login .showcase {
+    min-height: auto;
+    padding: 12px 0 0;
+  }
+
+  .zigma-login .eyebrow {
+    margin-bottom: 18px;
+  }
+
+  .zigma-login .headline {
+    font-size: clamp(44px, 14vw, 68px);
+    line-height: 0.94;
+  }
+
+  .zigma-login .showcase__subcopy {
+    width: 100%;
+    font-size: 14px;
+    margin-top: 20px;
+  }
+
+  .zigma-login .scene {
+    position: relative;
+    height: 290px;
+    left: 0;
+    right: auto;
+    bottom: auto;
+    margin-top: 20px;
+    transform: scale(0.78);
+    transform-origin: left top;
+    width: 132%;
+  }
+
+  .zigma-login .signal-word {
+    font-size: clamp(42px, 14vw, 68px);
+  }
+  .zigma-login .workflow-axis {
+    right: 18%;
+  }
+  .zigma-login .scene-note {
+    display: none;
+  }
+
+  .zigma-login .auth-shell {
+    border-radius: 30px;
+  }
+
+  .zigma-login .auth-card {
+    border-radius: 24px;
+    padding: 28px 20px;
+  }
+
+  .zigma-login .auth-card__topline {
+    margin-bottom: 34px;
+  }
+
+  .zigma-login .auth-title {
+    font-size: 38px;
+  }
+
+  .zigma-login .form-row {
+    align-items: flex-start;
+  }
+
+  .zigma-login .assist-link {
+    text-align: right;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zigma-login *,
+  .zigma-login *::before,
+  .zigma-login *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .zigma-login .loader {
+    display: none;
+  }
+
+  .zigma-login .neon-field,
+  .zigma-login .neon-cursor,
+  .zigma-login .cursor-lens {
+    display: none;
+  }
+
+  .zigma-login .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.zigma-login .login-error {
+  color: var(--red);
+  font-size: 12px;
+  margin: 10px 0 0;
+}
+.zigma-login .access-help {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.zigma-login .submit:disabled {
+  cursor: wait;
+}
+.zigma-login .form[aria-busy="true"] .submit__progress {
+  transform: scaleX(0.75);
+  transition: transform 8s ease-out;
+}

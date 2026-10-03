@@ -1,0 +1,6 @@
+.ticket-detail-tab-panel {
+  background-color: var(--background);
+  background-image: url("../../chat/chat-wallpaper.svg");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
