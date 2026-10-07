@@ -7,10 +7,9 @@ import { queryKeys } from "@/api/queryKeys";
 import { apiErrorMessage, apiFieldErrors } from "@/api/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
-import { useDepartments, useTeams, useSites } from "@/hooks/useMasters";
 import { PageHeader } from "@/components/common/PageHeader";
 import {
-  Button, Card, IconButton, Input, Label, Select,
+  Button, Card, IconButton, Input, Label,
 } from "@/components/ui/primitives";
 import { Modal, ConfirmDialog } from "@/components/feedback/Modal";
 import { DataTable, TruncatedCell, type Column } from "@/components/tables/DataTable";
@@ -40,17 +39,13 @@ interface FormValues {
   full_name: string;
   employee_code: string;
   phone: string;
-  designation: string;
-  department: string;
-  team: string;
-  site: string;
   password: string;
   roles: string[];
 }
 
 const EMPTY_FORM: FormValues = {
   username: "", email: "", full_name: "", employee_code: "", phone: "",
-  designation: "", department: "", team: "", site: "", password: "", roles: [],
+  password: "", roles: [],
 };
 
 export function UserManagementPage() {
@@ -68,9 +63,6 @@ export function UserManagementPage() {
   const [newPassword, setNewPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string>();
 
-  const departments = useDepartments();
-  const teams = useTeams();
-  const sites = useSites();
   const roleOptions = useQuery({
     queryKey: ["roles", "options"],
     queryFn: () => userApi.roles(),
@@ -163,8 +155,6 @@ export function UserManagementPage() {
       full_name: String(row.full_name ?? row.name ?? ""),
       employee_code: String(row.employee_code ?? ""),
       phone: String(row.phone ?? ""),
-      designation: String(row.designation ?? ""),
-      department: "", team: "", site: "", // resolved server-side; edit sends only what changed
       password: "",
       roles: roles.map((r) => r.code),
     });
@@ -205,10 +195,6 @@ export function UserManagementPage() {
         full_name: values.full_name || undefined,
         employee_code: values.employee_code || undefined,
         phone: values.phone || undefined,
-        designation: values.designation || undefined,
-        department: values.department || undefined,
-        team: values.team || undefined,
-        site: values.site || undefined,
         password: values.password,
         roles: values.roles,
       });
@@ -220,7 +206,6 @@ export function UserManagementPage() {
           full_name: values.full_name || undefined,
           employee_code: values.employee_code || undefined,
           phone: values.phone || undefined,
-          designation: values.designation || undefined,
           roles: values.roles,
         },
       });
@@ -438,51 +423,13 @@ export function UserManagementPage() {
                    onChange={(e) => setValues((v) => ({ ...v, phone: e.target.value }))} />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="u-designation">Designation</Label>
-            <Input id="u-designation" value={values.designation}
-                   onChange={(e) => setValues((v) => ({ ...v, designation: e.target.value }))} />
-          </div>
-
           {formMode === "create" ? (
-            <>
-              <div className="space-y-1.5">
-                <Label htmlFor="u-department">Department</Label>
-                <Select id="u-department" value={values.department}
-                        onChange={(e) => setValues((v) => ({ ...v, department: e.target.value }))}>
-                  <option value="">Select…</option>
-                  {(departments.data ?? []).map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="u-team">Team</Label>
-                <Select id="u-team" value={values.team}
-                        onChange={(e) => setValues((v) => ({ ...v, team: e.target.value }))}>
-                  <option value="">Select…</option>
-                  {(teams.data ?? []).map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="u-site">Site</Label>
-                <Select id="u-site" value={values.site}
-                        onChange={(e) => setValues((v) => ({ ...v, site: e.target.value }))}>
-                  <option value="">Select…</option>
-                  {(sites.data ?? []).map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="u-password" required>Password</Label>
-                <Input id="u-password" type="password" value={values.password}
-                       onChange={(e) => setValues((v) => ({ ...v, password: e.target.value }))} />
-                {errors.password ? <p className="text-[12px] text-[var(--destructive)]">{errors.password}</p> : null}
-              </div>
-            </>
+            <div className="space-y-1.5">
+              <Label htmlFor="u-password" required>Password</Label>
+              <Input id="u-password" type="password" autoComplete="new-password" value={values.password}
+                     onChange={(e) => setValues((v) => ({ ...v, password: e.target.value }))} />
+              {errors.password ? <p className="text-[12px] text-[var(--destructive)]">{errors.password}</p> : null}
+            </div>
           ) : null}
 
           <div className="space-y-1.5 sm:col-span-2">

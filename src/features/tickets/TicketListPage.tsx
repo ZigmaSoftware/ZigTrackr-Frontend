@@ -1,10 +1,11 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
-  AlertOctagon, AlertTriangle, Archive, FlaskConical, Inbox, PlayCircle,
-  KeyRound, LifeBuoy, ListFilter, ClipboardList, Trash2,
+  AlertOctagon, AlertTriangle, Archive, ChevronDown, FlaskConical, Inbox, Pause,
+  Play, PlayCircle, KeyRound, LifeBuoy, ListFilter, ClipboardList, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ticketApi } from "@/api/services";
@@ -24,6 +25,7 @@ import type { SupportTicketRow } from "@/types";
 import { PriorityBadge } from "@/components/common/badges";
 import { ReviewAssignDialog } from "@/features/tickets/dialogs/ReviewAssignDialog";
 import { DescriptionPreview, RequestPreview, TicketStatusBadge } from "@/features/tickets/TicketTableCells";
+import "./TicketWorkControl.css";
 
 const TicketDetailDialog = lazy(() => import("@/features/tickets/dialogs/TicketDetailDialog")
   .then((module) => ({ default: module.TicketDetailDialog })));
@@ -182,6 +184,152 @@ function AgeCell({ days }: { days: number }) {
   return <span className={cn("text-[12px] tabular-nums", tone)}>{days}d</span>;
 }
 
+type WorkAction = "pending" | "hold" | "rectify";
+
+function elapsedWorkTime(startedAt: string | null, now: number) {
+  if (!startedAt) return "Active";
+  const start = new Date(startedAt).getTime();
+  if (!Number.isFinite(start)) return "Active";
+  const seconds = Math.max(0, Math.floor((now - start) / 1000));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours > 0
+    ? `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
+    : `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function TicketWorkControl({
+  row, now, presetKey, starting, onStart, onAction, onOpen,
+}: {
+  row: SupportTicketRow;
+  now: number;
+  presetKey: TicketPreset;
+  starting: boolean;
+  onStart: () => void;
+  onAction: (action: WorkAction) => void;
+  onOpen: () => void;
+}) {
+  const [confirmingAction, setConfirmingAction] = useState<WorkAction | null>(null);
+  const status = row.effective_status || row.status;
+  const canStart = row.allowed_actions.includes("IN_PROGRESS");
+  const workActions: { kind: WorkAction; label: string; hint: string; icon: ReactNode }[] = status === "IN_PROGRESS"
+    ? [
+        { kind: "pending", label: "Move to pending", hint: "Awaiting information", icon: <Pause /> },
+        { kind: "hold", label: "Put on hold", hint: "Pause development", icon: <Pause /> },
+        { kind: "rectify", label: "Rectified - send to testing", hint: "Ready for verification", icon: <FlaskConical /> },
+      ]
+    : [
+        { kind: "rectify", label: "Rectified - send to testing", hint: "Ready for verification", icon: <FlaskConical /> },
+      ];
+  const availableActions = workActions.filter(({ kind }) => row.allowed_actions.includes(
+    kind === "pending" ? "PENDING" : kind === "hold" ? "ON_HOLD" : "TESTING",
+  ));
+
+  if (status === "IN_PROGRESS" || status === "PENDING" || status === "ON_HOLD") {
+    const active = status === "IN_PROGRESS";
+    if (!canStart && availableActions.length === 0) {
+      return (
+        <button type="button" onClick={(event) => { event.stopPropagation(); onOpen(); }}
+          className="ticket-work-pill"
+          title={active ? "View work in progress" : "View paused ticket"}>
+          <span className="ticket-work-ring" aria-hidden="true"><span /></span>
+          <span className="ticket-work-pill-text">{active ? elapsedWorkTime(row.current_work_started_at, now) : status === "PENDING" ? "Pending" : "On hold"}</span>
+          <ChevronDown className="ticket-work-caret" aria-hidden="true" />
+        </button>
+      );
+    }
+    const confirmation = confirmingAction === "pending"
+      ? { title: "Move ticket to Pending?", description: "This pauses the work timer. You can resume work when the ticket is ready.", confirm: "Continue to pending" }
+      : confirmingAction === "hold"
+        ? { title: "Put ticket On Hold?", description: "This pauses the work timer while development is on hold.", confirm: "Put on hold" }
+        : { title: "Send ticket to Testing?", description: "This hands the corrected ticket to the testing team for verification.", confirm: "Send to testing" };
+
+    return (
+      <>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button type="button" onClick={(event) => event.stopPropagation()}
+            className="ticket-work-pill"
+            aria-label={active ? `Work in progress for ${row.reference}. Change status` : `Paused work on ${row.reference}. Change status`}
+            title={active ? "Work in progress - change status" : "Paused - change status"}>
+            <span className="ticket-work-ring" aria-hidden="true"><span /></span>
+            <span className="ticket-work-pill-text">{active ? elapsedWorkTime(row.current_work_started_at, now) : status === "PENDING" ? "Pending" : "On hold"}</span>
+            <ChevronDown className="ticket-work-caret" aria-hidden="true" />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content align="end" sideOffset={8} collisionPadding={12} className="ticket-work-popover">
+            <div className="ticket-work-popover-head">
+              <span>WORK SESSION</span>
+              <span className="ticket-work-live"><i />{active ? "IN PROGRESS" : status === "PENDING" ? "PENDING" : "ON HOLD"}</span>
+            </div>
+            <div className="ticket-work-display">
+              <span className="ticket-work-display-ring" aria-hidden="true"><span /></span>
+              <div className="ticket-work-display-time">
+                <strong>{active ? elapsedWorkTime(row.current_work_started_at, now) : status === "PENDING" ? "Pending" : "On hold"}</strong>
+                <span>{active ? "Elapsed work time" : "Work is paused"}</span>
+              </div>
+            </div>
+            <DropdownMenu.Separator className="ticket-work-divider" />
+            <DropdownMenu.Label className="ticket-work-menu-label">CHANGE STATUS</DropdownMenu.Label>
+            {!active && canStart ? (
+              <DropdownMenu.Item onSelect={onStart}
+                className="ticket-work-menu-item">
+                <span className="ticket-work-menu-icon"><Play className="size-4" /></span>
+                <span><span className="ticket-work-menu-title">Resume work</span><span className="ticket-work-menu-hint">Continue development</span></span>
+              </DropdownMenu.Item>
+            ) : null}
+            {availableActions.map((action) => (
+              <DropdownMenu.Item key={action.kind} onSelect={() => setConfirmingAction(action.kind)}
+                className="ticket-work-menu-item">
+                <span className="ticket-work-menu-icon">{action.icon}</span>
+                <span><span className="ticket-work-menu-title">{action.label}</span><span className="ticket-work-menu-hint">{action.hint}</span></span>
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+      <ConfirmDialog
+        open={confirmingAction !== null}
+        onOpenChange={(open) => { if (!open) setConfirmingAction(null); }}
+        title={confirmation.title}
+        description={confirmation.description}
+        confirmLabel={confirmation.confirm}
+        onConfirm={() => {
+          const action = confirmingAction;
+          setConfirmingAction(null);
+          if (action) onAction(action);
+        }}
+      />
+      </>
+    );
+  }
+
+  if (["NEW", "CONFIRMED", "ASSIGNED", "APPROVED"].includes(status) && canStart) {
+    return (
+      <button type="button" disabled={starting} onClick={(event) => { event.stopPropagation(); onStart(); }}
+        className="ticket-work-pill"
+        title={`Start work on ${row.reference}`}>
+        <span className="ticket-work-ring ticket-work-ring-start" aria-hidden="true"><Play className="size-3 fill-current" /></span>
+        <span className="ticket-work-pill-text">{starting ? "Starting..." : "Start work"}</span>
+      </button>
+    );
+  }
+
+  const label = status === "TESTING" ? (presetKey === "testing" ? "Verify" : "Review fix")
+    : status === "REOPENED" ? (presetKey === "testing" ? "Review reopen" : "View")
+      : ["CLOSED", "REJECTED"].includes(status) ? "View" : "Open";
+  if (status === "TESTING" || (status === "REOPENED" && presetKey === "testing")) {
+    return <button type="button" className="ticket-work-pill" title={`${label} ${row.reference}`}
+      onClick={(event) => { event.stopPropagation(); onOpen(); }}>
+      <span className="ticket-work-ring ticket-work-ring-start" aria-hidden="true"><FlaskConical className="size-3.5" /></span>
+      <span className="ticket-work-pill-text">{label}</span>
+    </button>;
+  }
+  return <Button size="sm" variant={label === "View" ? "ghost" : "outline"}
+    onClick={(event) => { event.stopPropagation(); onOpen(); }}>{label}</Button>;
+}
+
 export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset }) {
   const { can, hasRole, user } = useAuth();
   const isDeveloper = hasRole("DEVELOPER");
@@ -196,8 +344,14 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
   const [detailTicketId, setDetailTicketId] = useState<string | null>(
     () => new URLSearchParams(window.location.search).get("ticket"),
   );
+  const [requestedAction, setRequestedAction] = useState<WorkAction | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const { filters, setFilters, clearFilters, activeCount } = useUrlFilters({ ordering: "-created_at" });
-  const queryParams = useMemo(() => ({ ...filters, ...preset.filters }), [filters, preset.filters]);
+  const queryParams = useMemo(() => ({ ...filters, ...preset.filters, submodule: presetKey }), [filters, preset.filters, presetKey]);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.tickets.list(queryParams),
@@ -215,6 +369,22 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
     },
     onError: (error) => toast.error(apiErrorMessage(error, "Could not delete the ticket.")),
   });
+  const startWork = useMutation({
+    mutationFn: (row: SupportTicketRow) => ticketApi.workTransition(row.id, { to_status: "IN_PROGRESS" }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all });
+      toast.success("Work started");
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, "Unable to start work.")),
+  });
+  const startWorkMutate = startWork.mutate;
+  const startWorkIsPending = startWork.isPending;
+  const startingTicketId = startWork.variables?.id;
+
+  function openTicket(id: string, action: WorkAction | null = null) {
+    setRequestedAction(action);
+    setDetailTicketId(id);
+  }
 
   /* The unassigned queue answers a different question from every other list:
      not "where is this ticket up to" but "what came in, from whom, and how long
@@ -314,7 +484,7 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
           className="whitespace-nowrap font-mono text-[12px] font-semibold text-[var(--primary)] hover:underline"
           onClick={(event) => {
             event.stopPropagation();
-            setDetailTicketId(row.id);
+            openTicket(row.id);
           }}
         >
           {row.reference}
@@ -444,30 +614,18 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
       key: "actions",
       header: "",
       align: "right",
-      width: "w-24",
-      /* The label names the next step rather than saying "Open": in a work
-         queue the useful question is what this ticket needs from you now. */
-      cell: (row) => {
-        const status = row.effective_status || row.status;
-        const label = status === "IN_PROGRESS" || status === "ON_HOLD" ? "Update"
-          : status === "TESTING" ? (presetKey === "testing" ? "Verify" : "Review fix")
-            : status === "REOPENED" ? (presetKey === "testing" ? "Review reopen" : "View")
-            : ["CLOSED", "REJECTED"].includes(status) ? "View" : "Start";
-        return (
-          <Button
-            size="sm"
-            variant={label === "View" ? "ghost" : "outline"}
-            onClick={(event) => {
-              event.stopPropagation();
-              setDetailTicketId(row.id);
-            }}
-          >
-            {label}
-          </Button>
-        );
-      },
+      width: "w-40",
+      cell: (row) => <TicketWorkControl
+        row={row}
+        now={now}
+        presetKey={presetKey}
+        starting={startWorkIsPending && startingTicketId === row.id}
+        onStart={() => startWorkMutate(row)}
+        onAction={(action) => openTicket(row.id, action)}
+        onOpen={() => openTicket(row.id)}
+      />,
     },
-  ], [presetKey, isDeveloper, user?.id]);
+  ], [presetKey, isDeveloper, user?.id, now, startWorkIsPending, startingTicketId, startWorkMutate]);
 
   return (
     <>
@@ -572,7 +730,7 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
               ordering={filters.ordering}
               onOrderingChange={(ordering) => setFilters({ ordering }, { resetPage: false })}
               onRowClick={(row) => (
-                isUnassigned ? setReviewTicketId(row.id) : setDetailTicketId(row.id)
+                isUnassigned ? setReviewTicketId(row.id) : openTicket(row.id)
               )}
               emptyTitle={isUnassigned ? "Nothing waiting" : "No tickets found"}
               emptyDescription={
@@ -599,9 +757,15 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
         <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-black/30" role="status" aria-label="Loading ticket"><Spinner className="size-6 text-white" /></div>}>
           <TicketDetailDialog
             open
-            onOpenChange={(next) => (next ? null : setDetailTicketId(null))}
+            onOpenChange={(next) => {
+              if (!next) {
+                setDetailTicketId(null);
+                setRequestedAction(null);
+              }
+            }}
             ticketId={detailTicketId}
             showVerifyClose={presetKey === "testing"}
+            initialAction={requestedAction}
           />
         </Suspense>
       ) : null}

@@ -61,7 +61,7 @@ export function ReassignTicketsPage() {
   const [submodule, setSubmodule] = useState("");
   const [priority, setPriority] = useState("");
   const [severity, setSeverity] = useState("");
-  const params = { reassignable: true, limit: pageSize, offset: (page - 1) * pageSize, search, ordering,
+  const params = { submodule: "reassign", reassignable: true, limit: pageSize, offset: (page - 1) * pageSize, search, ordering,
     ...(ticketType ? { ticket_type: ticketType } : {}),
     ...(source ? { source } : {}), ...(status ? { status } : {}) };
   const list = useQuery({

@@ -44,3 +44,112 @@
 .track-reopen{display:flex;flex:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;padding:11px 22px;border-bottom:1px solid var(--line);background:#f3f8ff;text-align:left}.track-reopen p{flex:1;min-width:150px;margin:0;color:#425c78;font-size:11px;line-height:1.4}.track-reopen-button,.track-reopen-actions button:last-child{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;background:var(--blue);color:white;border:0;border-radius:7px;padding:7px 11px;font-size:12px;font-weight:800;white-space:nowrap;cursor:pointer}.track-reopen-button:hover,.track-reopen-actions button:last-child:hover{background:var(--blue-dark)}.track-reopen form{width:100%}.track-reopen label{margin-bottom:6px}.track-reopen textarea{width:100%;min-height:64px;resize:vertical;border:1px solid var(--line-strong);border-radius:7px;background:#fff;padding:8px 10px;font:13px Inter,ui-sans-serif,system-ui,sans-serif;outline:none}.track-reopen-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:7px}.track-reopen-actions button:first-child{min-height:34px;background:transparent;border:0;color:#425c78;font-size:12px;cursor:pointer}.track-reopen-actions button:disabled{opacity:.5;cursor:not-allowed}.track-reopen-error{flex:none;margin:0;padding:8px 22px;border-bottom:1px solid #eab7b7;background:#fff5f5;color:#a32929;font-size:12px;text-align:left}
 .track-footer{height:68px;border-top:1px solid rgba(190,203,216,.68);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted)}
 @media(max-width:640px){.track-header{height:72px}.track-support,.track-status{display:none}.track-main{padding-top:30px}.track-page.has-ticket .track-main{padding:18px 0 22px}.track-hero h1{font-size:35px}.tracker-card{width:96vw;border-radius:18px}.tracker-card.has-result{height:min(560px,calc(100dvh - 260px));min-height:380px}.track-form,.track-panel{padding-left:18px;padding-right:18px}.track-ticket-summary{align-items:flex-start}.track-ticket-title{overflow-wrap:anywhere}.track-secure{display:none}.track-activity-date{width:100%}.track-stone{opacity:.45}}
+
+/* ---- VIDEO BACKGROUND ----
+   The footage is an abstract orange/violet ribbon on a mostly white field, so
+   the page's own gradient and ::before haze are cleared and the video takes
+   the base layer. Because it is predominantly white and uncluttered, the
+   dark-ink text reads directly over it -- no frosted plates are needed, and
+   adding them would show as grey boxes against the white. */
+/* The source is 720x720 stretched across a much wider viewport, so it reads
+   soft. A deliberate blur turns that upscaling softness into an intentional
+   look rather than a defect -- and because the footage is an abstract
+   gradient, blurring costs no real detail. scale(1.08) hides the transparent
+   edge the blur would otherwise pull in at the borders. */
+.track-bg-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;
+  pointer-events:none;filter:blur(34px) saturate(1.12);transform:scale(1.08)}
+/* Matches the footage's dominant white so there is no flash of a wrong colour
+   before the first frame paints. */
+.track-page{background:#fff}
+.track-page:before{display:none}
+/* The stones belonged to the old flat-gradient scene and read as debris over
+   moving footage. */
+.track-stone{display:none}
+.track-page-inner{z-index:1}
+.track-header,.track-footer{border-color:rgba(120,110,150,.22)}
+/* The ribbon sweeps across the subtitle at some points in the loop; the
+   default muted grey washed out against it. */
+.track-sub{color:#3a4a60}
+/* The card keeps an opaque surface: the ribbon passes behind it and would
+   otherwise tint the form. The conic-gradient halo (::after) spread far enough
+   to wash the card's interior, so it is dropped while the crisp animated
+   border (::before) -- the actual design feature -- is kept. */
+/* The multi-colour Gemini ring lives on the CARD. Against this colourful
+   backdrop a 2px ring read as thin, so the ring is thickened and the outer
+   halo -- disabled while the busy underwater video was in use -- is restored
+   to lift the card off the video. */
+/* Frosted glass, matching the login page's auth-card: 40% white over a 40px
+   blur. The blur -- not the opacity -- does the legibility work, which is what
+   lets the card stay this transparent while the text underneath stays sharp. */
+/* The login page can sit at 40% because its backdrop-filter does the
+   legibility work. Here the video is ALREADY blurred 34px, so a further
+   backdrop blur adds nothing and the card was just tinted glass over strong
+   colour. Raising the white to 72% restores a readable surface while keeping
+   the ribbon clearly visible through it. */
+.tracker-card{background:rgba(255,255,255,.72);
+  backdrop-filter:blur(18px) saturate(1.25);
+  -webkit-backdrop-filter:blur(18px) saturate(1.25);
+  border:0;
+  box-shadow:0 30px 80px -34px rgba(60,40,130,.55),inset 0 1px 0 rgba(255,255,255,.9)}
+/* The ring sits ON the card edge rather than outside it. At inset:-3px it was
+   being covered by the card's own background; inset:0 with the mask excluding
+   the content box paints it as the card's actual border. */
+/* Gemini's border is not a solid colour wheel spinning. The base ring uses
+   HARD stops (`#49c8ff 0deg 54deg`), which is what made it read as uniform
+   rotating blocks. Here the stops are single angles so the colours bleed into
+   one another, and long neutral gaps are left between them so a few bright
+   bands travel around a mostly-quiet ring -- that travelling-light quality is
+   the actual effect. Two layers at different speeds and directions stop the
+   motion from looking like one rigid wheel. */
+/* Matching the Google reference: colour is NOT wrapped evenly around the card.
+   It pools at two opposite corners -- top-right and bottom-left -- while the
+   left and right mid-sides stay plain.
+
+   But the colours still FLOW through those pools rather than sitting static.
+   That is done with an oversized conic gradient (the moving colour source,
+   spinning via --gemini-angle) which is then MASKED so it is only visible at
+   the two corners. The mask fixes WHERE colour appears; the spin keeps the
+   hues travelling through it. A plain conic ring could not do this because a
+   conic sweep always paints every side equally. */
+.tracker-card:before{inset:0;border-radius:22px;padding:2.5px;z-index:4;
+  background:
+    conic-gradient(from var(--gemini-angle),
+      #4285f4 0deg, #49c8ff 38deg, #34a853 86deg, #fbbc04 142deg,
+      #ff7a59 186deg, #ea4335 232deg, #a855f7 290deg, #4285f4 360deg),
+    linear-gradient(0deg, rgba(190,195,215,.45), rgba(190,195,215,.45));
+  /* Two masks combined: the ring mask (content-box exclusion) that turns the
+     fill into a border, intersected with a corner mask that fades the colour
+     out along the left and right mid-sides. */
+  -webkit-mask:
+    linear-gradient(218deg,#000 0%,#000 20%,transparent 44%,transparent 56%,#000 80%,#000 100%),
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite:source-in,xor;
+  mask:
+    linear-gradient(218deg,#000 0%,#000 20%,transparent 44%,transparent 56%,#000 80%,#000 100%),
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite:intersect,exclude;
+  animation:geminiOrbit 5.2s linear infinite}
+
+/* The outer bloom is DROPPED. The card has `overflow:hidden` (it needs it, to
+   clip the scrolling result panel), which forces any child glow to render
+   inside the card where it tints the form and ruins text contrast. A halo
+   would have to live outside the card entirely; the masked border plus the
+   existing drop shadow already give enough separation from the video. */
+.track-card-sheen{display:none}
+
+@media(prefers-reduced-motion:reduce){
+  .tracker-card:before,.track-card-sheen{animation:none}
+}
+/* `isolation:isolate` on the card makes a z-index:-1 pseudo-element paint
+   INSIDE the card's stacking context, so the halo tinted the form instead of
+   glowing behind it. The drop shadow provides the lift instead. */
+.tracker-card:after{display:none}
+/* The head's own light fill would hide the frosting. */
+.track-card-head{background:transparent}
+.track-form{background:transparent}
+/* Inputs need their own surface to stay readable over the moving gradient. */
+.track-page input{background:rgba(255,255,255,.92);border-color:rgba(120,110,150,.32)}
+@media(prefers-reduced-motion:reduce){.track-bg-video{display:none}}
+

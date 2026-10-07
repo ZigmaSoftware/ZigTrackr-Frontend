@@ -95,7 +95,7 @@ export function AppLayout() {
                 <kbd className="hidden rounded border border-[var(--border)] px-1 text-[10px] md:inline">⌘K</kbd>
               </button>
 
-              {can("tickets.ticket.create") ? (
+              {can("tickets.create.access") && can("tickets.ticket.create") ? (
                 <Button size="sm" onClick={() => setCreateOpen(true)}>
                   <Plus /> <span className="hidden sm:inline">Create Ticket</span>
                 </Button>

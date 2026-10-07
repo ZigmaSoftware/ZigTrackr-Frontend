@@ -190,7 +190,17 @@ export function TrackTicketPage() {
     verify.mutate();
   }
 
-  return <div className={`track-page${showResult ? " has-ticket" : ""}`}><div className="track-page-inner">
+  return <div className={`track-page${showResult ? " has-ticket" : ""}`}>
+    {/* Background video. muted + playsinline + loop are what allow autoplay
+        without a user gesture; VP9 first with MP4 as the Safari fallback.
+        The 0.8x slowdown is baked into the files at encode time rather than
+        set via playbackRate, which would resample on the fly and judder. */}
+    <video className="track-bg-video" autoPlay muted loop playsInline
+           preload="auto" aria-hidden="true">
+      <source src="/track-bg.webm" type="video/webm" />
+      <source src="/track-bg.mp4" type="video/mp4" />
+    </video>
+    <div className="track-page-inner">
     <header className="track-header">
       <div className="track-brand"><span className="track-logo">Z</span><span>zigma</span><span className="track-support">Support desk</span></div>
       <div className="track-status"><i />Here to keep you moving</div>
@@ -202,6 +212,7 @@ export function TrackTicketPage() {
         <h1>Track your request.</h1>
         <p className="track-sub">Your ticket, progress and conversation — all in one calm place.</p>
         <section className={`tracker-card${showResult ? " has-result" : ""}`} aria-label="Ticket tracking">
+          <span className="track-card-sheen" aria-hidden="true" />
           <div className="track-card-head">
             <div className="track-card-heading">
               {showResult ? <button type="button" className="track-back" onClick={editLookup} aria-label="Edit ticket details" title="Edit ticket details"><ArrowLeft size={18} /></button> : null}

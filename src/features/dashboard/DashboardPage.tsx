@@ -1,291 +1,224 @@
+import { lazy, Suspense, useId, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
-  Activity, AlertOctagon, AlertTriangle, Archive, CheckCircle2, Clock,
-  FlaskConical, PlayCircle, TrendingUp, UserPlus,
+  Activity, ArrowDownLeft, ArrowRight, ArrowUpRight, Bug, CalendarDays,
+  CheckCheck, CheckCircle2, ClipboardList, Clock3, Inbox, KeyRound, Layers,
+  Play, RefreshCw, ShieldCheck, Sparkles, UserRound, type LucideIcon,
 } from "lucide-react";
 import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
-  ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis,
+  Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
+  Tooltip as ChartTooltip, XAxis, YAxis,
 } from "recharts";
-import { dashboardApi } from "@/api/services";
+import { format, subDays } from "date-fns";
+import { dashboardApi, ticketApi } from "@/api/services";
 import { queryKeys } from "@/api/queryKeys";
+import { Button, Skeleton } from "@/components/ui/primitives";
+import { ErrorState, PermissionDenied } from "@/components/feedback/states";
 import { useAuth } from "@/features/auth/AuthContext";
-import { PageHeader } from "@/components/common/PageHeader";
-import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/primitives";
-import { EmptyState, ErrorState, KpiSkeleton, CardSkeleton } from "@/components/feedback/states";
-import { StatusBadge, PriorityBadge, OverdueBadge } from "@/components/common/badges";
 import { useCountUp } from "@/hooks/useCountUp";
-import { greeting, longDate, relativeTime } from "@/lib/dates";
-import type { BugListRow, ChartDatum, DashboardKpis } from "@/types";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { formatDate, greeting, longDate, relativeTime } from "@/lib/dates";
+import { dailyApi } from "@/features/daily-updates/api";
+import { attentionParams, chartRows, shortStatus, trendForPeriod, workParams, type AttentionTab, type WorkTab } from "./dashboardModel";
+import type { ChartDatum, SupportTicketRow } from "@/types";
+import "./DashboardPage.css";
 
-const CHART_COLORS = [
-  "var(--chart-1)", "var(--chart-2)", "var(--chart-3)",
-  "var(--chart-4)", "var(--chart-5)", "var(--chart-6)",
-];
+const TicketDetailDialog = lazy(() => import("@/features/tickets/dialogs/TicketDetailDialog").then((m) => ({ default: m.TicketDetailDialog })));
+const COLORS = ["var(--dash-violet)", "var(--dash-coral)", "var(--dash-teal)", "var(--dash-blue)", "#c4a2ed", "#b4bfce"];
+const WORK_TABS: { key: WorkTab; label: string }[] = [{ key: "all", label: "All active" }, { key: "progress", label: "In progress" }, { key: "verification", label: "Verification" }];
+const ATTENTION_TABS: { key: AttentionTab; label: string }[] = [{ key: "overdue", label: "Overdue" }, { key: "critical", label: "Critical" }, { key: "unassigned", label: "Unassigned" }];
+const ATTENTION_ROUTES = { overdue: "/tickets/overdue", critical: "/tickets/critical", unassigned: "/tickets/unassigned" };
+const delay = (ms: number) => ({ "--enter-delay": `${ms}ms` } as CSSProperties);
 
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
+  const reduced = usePrefersReducedMotion();
+  const gradientId = useId().replaceAll(":", "");
+  const [period, setPeriod] = useState(30);
+  const [workTab, setWorkTab] = useState<WorkTab>("all");
+  const [attentionTab, setAttentionTab] = useState<AttentionTab>("overdue");
+  const [ticketId, setTicketId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const canDashboard = can("dashboard.dashboard.view");
+  const canReadTickets = can("tickets.ticket.view");
+  const canReadActivity = canReadTickets && can("bugs.update.view");
+  const kpis = useQuery({ queryKey: queryKeys.dashboard.kpis, queryFn: dashboardApi.kpis, enabled: canDashboard, staleTime: 60_000 });
+  const charts = useQuery({ queryKey: queryKeys.dashboard.charts, queryFn: dashboardApi.charts, enabled: canDashboard, staleTime: 60_000 });
+  const myParams = workParams(workTab);
+  const work = useQuery({ queryKey: queryKeys.tickets.list(myParams), queryFn: () => ticketApi.list(myParams), enabled: canDashboard && canReadTickets, staleTime: 60_000 });
+  const urgentParams = attentionParams(attentionTab);
+  const attention = useQuery({ queryKey: queryKeys.tickets.list(urgentParams), queryFn: () => ticketApi.list(urgentParams), enabled: canDashboard && canReadTickets, staleTime: 60_000 });
+  const activityParams = { from_date: format(subDays(new Date(), 6), "yyyy-MM-dd"), to_date: format(new Date(), "yyyy-MM-dd"), category: "all", limit: 4, page: 1 };
+  const activity = useQuery({ queryKey: queryKeys.tickets.dailyUpdates(activityParams), queryFn: () => dailyApi.list(activityParams), enabled: canDashboard && canReadActivity, staleTime: 60_000 });
 
-  const kpis = useQuery({ queryKey: queryKeys.dashboard.kpis, queryFn: dashboardApi.kpis });
-  const charts = useQuery({ queryKey: queryKeys.dashboard.charts, queryFn: dashboardApi.charts });
-  const attention = useQuery({ queryKey: queryKeys.dashboard.attention, queryFn: dashboardApi.attention });
-  const myWork = useQuery({ queryKey: queryKeys.dashboard.myWork, queryFn: dashboardApi.myWork });
-  const activity = useQuery({ queryKey: queryKeys.dashboard.activity, queryFn: dashboardApi.recentActivity });
+  const trend = trendForPeriod(charts.data?.closure_trend ?? [], period);
+  const opened = trend.reduce((sum, day) => sum + day.opened, 0);
+  const closed = trend.reduce((sum, day) => sum + day.closed, 0);
+  const priorities = chartRows(charts.data?.by_priority ?? []);
+  const priorityTotal = priorities.reduce((sum, row) => sum + row.count, 0);
+  const statuses = chartRows(charts.data?.by_status ?? []).sort((a, b) => b.count - a.count).slice(0, 5);
+  const modules = chartRows(charts.data?.by_module ?? []).sort((a, b) => b.count - a.count).slice(0, 5);
 
-  return (
-    <>
-      <PageHeader
-        title={`${greeting()}, ${user?.name?.split(" ")[0] ?? "there"}`}
-        description={longDate()}
-      />
+  async function refresh() {
+    setRefreshing(true);
+    try {
+      await Promise.allSettled([kpis.refetch(), charts.refetch(),
+        ...(canReadTickets ? [work.refetch(), attention.refetch()] : []),
+        ...(canReadActivity ? [activity.refetch()] : [])]);
+    } finally { setRefreshing(false); }
+  }
 
-      {/* ---- KPI CARDS (spec 21.2) ---- */}
-      {kpis.isLoading ? (
-        <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-          {Array.from({ length: 8 }).map((_, index) => <KpiSkeleton key={index} />)}
+  if (!canDashboard) return <PermissionDenied />;
+
+  return <div className="dashboard-page">
+    <header className="dash-header dash-enter">
+      <div>
+        <div className="dash-eyebrow"><span /> Workspace overview</div>
+        <h1>{greeting()}, {user?.name?.split(" ")[0] || "there"}<span className="ml-2 text-[var(--dash-violet)]">✦</span></h1>
+        <p>Here's what's happening with your tickets today.</p>
+      </div>
+      <div className="dash-header-actions">
+        <div className="dash-updated"><span>●</span>{kpis.dataUpdatedAt ? `Updated ${format(kpis.dataUpdatedAt, "hh:mm a")}` : "Current snapshot"}</div>
+        <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={refreshing} aria-label="Refresh dashboard"><RefreshCw className={refreshing && !reduced ? "animate-spin" : ""} /><span>Refresh</span></Button>
+      </div>
+    </header>
+
+    {kpis.isLoading ? <div className="dash-kpis">{Array.from({ length: 4 }, (_, i) => <div key={i} className="dash-surface p-4"><Skeleton className="h-7 w-28" /><Skeleton className="mt-3 h-9 w-16" /><Skeleton className="mt-2 h-3 w-32" /></div>)}</div>
+      : kpis.isError ? <div className="dash-surface"><ErrorState title="Summary couldn't be loaded" onRetry={() => void kpis.refetch()} className="py-8" /></div>
+      : kpis.data ? <>
+        <div className="dash-kpis">
+          <Metric label="Open tickets" value={kpis.data.total_open} icon={Layers} color="var(--dash-violet)" note={`${kpis.data.new_today} received today`} to={can("tickets.all.access") ? "/tickets" : undefined} delayMs={30} />
+          <Metric label="In progress" value={kpis.data.in_progress} icon={Play} color="var(--dash-blue)" note="Active development & service work" to={can("tickets.all.access") ? "/tickets?status=IN_PROGRESS" : undefined} delayMs={70} />
+          <Metric label="Awaiting verification" value={kpis.data.testing} icon={ShieldCheck} color="var(--dash-coral)" note="Rectified and ready to review" to={can("tickets.testing.access") ? "/tickets/testing" : undefined} delayMs={110} />
+          <Metric label="Closed this month" value={kpis.data.closed_this_month} icon={CheckCheck} color="var(--dash-teal)" note={`${kpis.data.closed_today} closed today`} to={can("tickets.closed.access") ? "/tickets/closed" : undefined} delayMs={150} />
         </div>
-      ) : kpis.isError ? (
-        <Card className="mb-4"><ErrorState onRetry={() => kpis.refetch()} /></Card>
-      ) : kpis.data ? (
-        <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-          <Kpi label="Total Open" value={kpis.data.total_open} icon={Activity} to="/tickets" />
-          <Kpi label="Critical" value={kpis.data.critical} icon={AlertOctagon} tone="danger" to="/tickets/critical" />
-          <Kpi label="High" value={kpis.data.high} icon={AlertTriangle} tone="warning" />
-          <Kpi label="In Progress" value={kpis.data.in_progress} icon={PlayCircle} />
-          <Kpi label="Testing" value={kpis.data.testing} icon={FlaskConical} to="/tickets/testing" />
-          <Kpi label="Overdue" value={kpis.data.overdue} icon={Clock} tone="danger" to="/tickets/overdue" />
-          <Kpi label="Closed Today" value={kpis.data.closed_today} icon={CheckCircle2} tone="success" />
-          <Kpi label="Closed (Month)" value={kpis.data.closed_this_month} icon={Archive} tone="success" />
+        <div className="dash-context dash-surface dash-enter" style={delay(180)}>
+          <span className="dash-context-label"><Sparkles className="size-3.5" /> At a glance</span>
+          <div className="dash-signals">
+            <Signal label="Unassigned" value={kpis.data.unassigned} color="var(--dash-violet)" />
+            <Signal label="Critical" value={kpis.data.critical} color="var(--destructive)" />
+            <Signal label="High priority" value={kpis.data.high} color="var(--dash-coral)" />
+            <Signal label="Overdue" value={kpis.data.overdue} color="var(--warning)" />
+            <Signal label="Reopened" value={kpis.data.reopened} color="var(--dash-blue)" />
+          </div>
         </div>
-      ) : null}
+      </> : null}
 
-      {/* ---- PRIORITY ATTENTION & MY WORK (spec 21.3) ---- */}
-      <div className="mb-4 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>Priority attention</CardTitle></CardHeader>
-          <CardBody className="space-y-4">
-            {attention.isLoading ? <CardSkeleton /> : (
-              <>
-                <BugMiniList title="Critical" to="/tickets/critical"
-                             rows={attention.data?.critical ?? []} />
-                <BugMiniList title="Overdue" to="/tickets/overdue"
-                             rows={attention.data?.overdue ?? []} showOverdue />
-                <BugMiniList title="Update pending" to="/updates/pending"
-                             rows={attention.data?.update_pending ?? []} />
-                <BugMiniList title="Unassigned" to="/tickets/unassigned"
-                             rows={attention.data?.unassigned ?? []} />
-              </>
-            )}
-          </CardBody>
-        </Card>
+    <div className="dash-charts">
+      <section className="dash-surface dash-enter" style={delay(220)} aria-label="Bug activity trend">
+        <PanelHeader title="Bug activity" subtitle="Intake and closures over time">
+          <div className="dash-period" role="group" aria-label="Bug trend period">{[7, 14, 30].map(days => <button type="button" key={days} aria-pressed={period === days} onClick={() => setPeriod(days)}>{days} days</button>)}</div>
+        </PanelHeader>
+        {charts.isError ? <PanelError onRetry={() => void charts.refetch()} /> : charts.isLoading ? <ChartLoading /> : trend.length === 0 || opened + closed === 0 ? <QuietState title="No bug activity in this period" description="New and closed bugs will appear here as work moves forward." /> : <>
+          <div className="dash-trend-totals">
+            <span className="dash-trend-total"><i className="dash-legend-dot bg-[var(--dash-violet)]" />Opened <strong>{opened.toLocaleString()}</strong><ArrowUpRight className="size-3 text-[var(--dash-violet)]" /></span>
+            <span className="dash-trend-total"><i className="dash-legend-dot bg-[var(--dash-teal)]" />Closed <strong>{closed.toLocaleString()}</strong><ArrowDownLeft className="size-3 text-[var(--dash-teal)]" /></span>
+          </div>
+          <div className="dash-chart">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <AreaChart data={trend} margin={{ top: 8, right: 8, left: -18, bottom: 0 }} accessibilityLayer>
+                <defs>
+                  <linearGradient id={`${gradientId}-opened`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--dash-violet)" stopOpacity={.2} /><stop offset="100%" stopColor="var(--dash-violet)" stopOpacity={0} /></linearGradient>
+                  <linearGradient id={`${gradientId}-closed`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--dash-teal)" stopOpacity={.08} /><stop offset="100%" stopColor="var(--dash-teal)" stopOpacity={0} /></linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 5" strokeOpacity={.6} />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} minTickGap={24} tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(value: string) => formatDate(value).slice(0, 6)} dy={6} />
+                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} />
+                <ChartTooltip cursor={{ stroke: "var(--dash-violet)", strokeDasharray: "3 3" }} content={({ active, payload, label }) => active && payload?.length ? <div className="dash-tooltip"><p>{formatDate(String(label))}</p>{payload.map(row => <div key={String(row.dataKey)} className="dash-tooltip-row"><span style={{ color: row.color }}>{row.name}</span><strong>{String(row.value)}</strong></div>)}</div> : null} />
+                <Area type="monotone" dataKey="opened" name="Opened" stroke="var(--dash-violet)" strokeWidth={2.5} fill={`url(#${gradientId}-opened)`} isAnimationActive={!reduced} animationDuration={800} activeDot={{ r: 4, strokeWidth: 3, stroke: "var(--card)" }} />
+                <Area type="monotone" dataKey="closed" name="Closed" stroke="var(--dash-teal)" strokeWidth={2} fill={`url(#${gradientId}-closed)`} isAnimationActive={!reduced} animationDuration={800} activeDot={{ r: 4, strokeWidth: 3, stroke: "var(--card)" }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </>}
+        <div className="dash-chart-foot">Bug analytics · Last {period} days · Summary cards above cover all ticket types.</div>
+      </section>
 
-        <Card>
-          <CardHeader><CardTitle>My work</CardTitle></CardHeader>
-          <CardBody className="space-y-4">
-            {myWork.isLoading ? <CardSkeleton /> : (
-              <>
-                <BugMiniList title="Assigned to me" to="/bugs/assigned"
-                             rows={myWork.data?.assigned_to_me ?? []} />
-                <BugMiniList title="In progress" rows={myWork.data?.in_progress ?? []} />
-                <BugMiniList title="In testing" rows={myWork.data?.testing ?? []} />
-                <BugMiniList title="Needs today's update" to="/updates/pending"
-                             rows={myWork.data?.update_pending ?? []} />
-              </>
-            )}
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* ---- CHARTS (spec 21.3, 22) ---- */}
-      <div className="mb-4 grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Bugs by status" loading={charts.isLoading}>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={(charts.data?.by_status as ChartDatum[]) ?? []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={0} angle={-25}
-                     textAnchor="end" height={60} stroke="var(--muted-foreground)" />
-              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} stroke="var(--muted-foreground)" />
-              <ChartTooltip contentStyle={TOOLTIP_STYLE} />
-              <Bar dataKey="count" name="Bugs" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Open bugs by priority" loading={charts.isLoading}>
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie
-                data={(charts.data?.by_priority as ChartDatum[]) ?? []}
-                dataKey="count" nameKey="label" innerRadius={55} outerRadius={85} paddingAngle={2}
-              >
-                {((charts.data?.by_priority as ChartDatum[]) ?? []).map((entry, index) => (
-                  <Cell key={entry.code} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
-                ))}
-              </Pie>
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <ChartTooltip contentStyle={TOOLTIP_STYLE} />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Top modules by bug count" loading={charts.isLoading}>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={(charts.data?.by_module as ChartDatum[]) ?? []} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false}
-                     stroke="var(--muted-foreground)" />
-              <YAxis type="category" dataKey="label" width={110} tick={{ fontSize: 11 }}
-                     stroke="var(--muted-foreground)" />
-              <ChartTooltip contentStyle={TOOLTIP_STYLE} />
-              <Bar dataKey="count" name="Bugs" fill="var(--chart-2)" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Opened vs closed (30 days)" loading={charts.isLoading}>
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={(charts.data?.closure_trend as { date: string }[]) ?? []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)"
-                     tickFormatter={(value: string) => value.slice(5)} />
-              <YAxis tick={{ fontSize: 11 }} allowDecimals={false} stroke="var(--muted-foreground)" />
-              <ChartTooltip contentStyle={TOOLTIP_STYLE} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line type="monotone" dataKey="opened" name="Opened" stroke="var(--chart-4)"
-                    strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="closed" name="Closed" stroke="var(--chart-3)"
-                    strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-
-      {/* ---- RECENT ACTIVITY (spec 21.3) ---- */}
-      <Card>
-        <CardHeader><CardTitle>Recent activity</CardTitle></CardHeader>
-        <CardBody>
-          {activity.isLoading ? <CardSkeleton rows={5} /> :
-           !activity.data || activity.data.length === 0 ? (
-            <EmptyState title="No recent activity" />
-          ) : (
-            <ul className="divide-y divide-[var(--border)]">
-              {activity.data.slice(0, 12).map((row) => (
-                <li key={row.id} className="flex items-center gap-3 py-2">
-                  <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--muted)]">
-                    <Activity className="size-3.5 text-[var(--muted-foreground)]" aria-hidden />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px]">
-                      {row.bug_id ? (
-                        <Link to={`/bugs/detail/${row.bug_id}`}
-                              className="font-medium text-[var(--primary)] hover:underline">
-                          {row.bug_no}
-                        </Link>
-                      ) : <span className="font-medium">{row.bug_no}</span>}
-                      {" — "}{row.action_label}
-                      {row.new_value ? <span className="text-[var(--muted-foreground)]"> · {row.new_value}</span> : null}
-                    </p>
-                    <p className="text-[11px] text-[var(--muted-foreground)]">
-                      {row.actor} · {relativeTime(row.timestamp)}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardBody>
-      </Card>
-    </>
-  );
-}
-
-const TOOLTIP_STYLE = {
-  backgroundColor: "var(--popover)",
-  border: "1px solid var(--border)",
-  borderRadius: 8,
-  fontSize: 12,
-};
-
-const TONE_CLASS = {
-  default: "text-[var(--foreground)]",
-  danger: "text-[var(--destructive)]",
-  warning: "text-[var(--warning)]",
-  success: "text-[var(--success)]",
-};
-
-function Kpi({
-  label, value, icon: Icon, tone = "default", to,
-}: {
-  label: string; value: number; icon: typeof Activity;
-  tone?: keyof typeof TONE_CLASS; to?: string;
-}) {
-  const display = useCountUp(value);
-  const content = (
-    <Card className="p-3 transition-shadow hover:shadow-md">
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
-          {label}
-        </p>
-        <Icon className={`size-3.5 ${TONE_CLASS[tone]}`} aria-hidden />
-      </div>
-      <p className={`mt-1.5 text-2xl font-semibold tabular-nums ${TONE_CLASS[tone]}`}>{display}</p>
-    </Card>
-  );
-  return to ? <Link to={to} className="block">{content}</Link> : content;
-}
-
-function ChartCard({
-  title, loading, children,
-}: { title: string; loading?: boolean; children: React.ReactNode }) {
-  return (
-    <Card>
-      <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
-      <CardBody>
-        {loading ? <div className="h-[240px] animate-pulse rounded bg-[var(--muted)]" /> : children}
-      </CardBody>
-    </Card>
-  );
-}
-
-function BugMiniList({
-  title, rows, to, showOverdue,
-}: { title: string; rows: BugListRow[]; to?: string; showOverdue?: boolean }) {
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between">
-        <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
-          {title} <span className="ml-1 font-normal">({rows.length})</span>
-        </p>
-        {to && rows.length > 0 ? (
-          <Link to={to} className="text-[11px] text-[var(--primary)] hover:underline">View all</Link>
-        ) : null}
-      </div>
-      {rows.length === 0 ? (
-        <p className="text-[12px] text-[var(--muted-foreground)]">Nothing here.</p>
-      ) : (
-        <ul className="space-y-1">
-          {rows.slice(0, 4).map((row) => (
-            <li key={row.id}>
-              <Link
-                to={`/bugs/detail/${row.id}`}
-                className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded px-1.5 py-1 hover:bg-[var(--muted)]"
-              >
-                <span className="shrink-0 text-[11px] font-medium text-[var(--primary)]">
-                  {row.bug_no}
-                </span>
-                <span className="min-w-0 flex-1 basis-full truncate text-[12px] sm:basis-0">
-                  {row.title}
-                </span>
-                <span className="flex shrink-0 items-center gap-1.5">
-                  {showOverdue && row.is_overdue ? <OverdueBadge days={row.overdue_days} /> : null}
-                  <StatusBadge status={row.status} label={row.status_label} showIcon={false} />
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <section className="dash-surface dash-enter" style={delay(260)} aria-label="Open bug priorities">
+        <PanelHeader title="Open bug priorities" subtitle="A clear view of what needs focus"><span className="dash-panel-counter">Current</span></PanelHeader>
+        {charts.isError ? <PanelError onRetry={() => void charts.refetch()} /> : charts.isLoading ? <ChartLoading /> : !priorityTotal ? <QuietState icon={CheckCircle2} title="No open bugs" description="Your visible bug queue is clear." /> : <div className="dash-donut-layout">
+          <div className="dash-donut">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}><PieChart><Pie data={priorities} dataKey="count" nameKey="label" innerRadius="70%" outerRadius="92%" paddingAngle={priorityTotal > 1 ? 3 : 0} cornerRadius={4} stroke="none" startAngle={90} endAngle={-270} isAnimationActive={!reduced} animationDuration={800}>
+              {priorities.map((row, i) => <Cell key={row.code || row.label} fill={row.color || COLORS[i % COLORS.length]} />)}
+            </Pie><ChartTooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 11 }} /></PieChart></ResponsiveContainer>
+            <div className="dash-donut-center"><strong>{priorityTotal.toLocaleString()}</strong><span>open bugs</span></div>
+          </div>
+          <ul className="dash-priorities">{priorities.map((row, i) => <li key={row.code || row.label} className="dash-priority"><i className="dash-legend-dot" style={{ background: row.color || COLORS[i % COLORS.length] }} /><span title={row.label}>{row.label}</span><div><strong>{row.count.toLocaleString()}</strong><small>{Math.round(row.count / priorityTotal * 100)}%</small></div></li>)}</ul>
+        </div>}
+        <div className="dash-chart-foot">Priorities reflect the bugs you have permission to view.</div>
+      </section>
     </div>
-  );
+
+    <div className="dash-work-grid">
+      <section className="dash-surface dash-enter" style={delay(300)}>
+        <PanelHeader title="My work" subtitle="Your bug, service and access tickets"><span className="dash-panel-counter"><UserRound className="mr-1 inline size-3" />Assigned to you</span></PanelHeader>
+        <QueueTabs tabs={WORK_TABS} selected={workTab} onSelect={setWorkTab} label="My work filter" />
+        <div className="dash-queue">{!canReadTickets ? <QuietState icon={ShieldCheck} title="Ticket access required" description="Ask your administrator for access to your ticket queue." /> : work.isLoading ? <QueueLoading /> : work.isError ? <PanelError onRetry={() => void work.refetch()} /> : work.data?.results.length ? work.data.results.map(row => <TicketRow key={row.id} row={row} onOpen={setTicketId} />) : <QuietState icon={CheckCircle2} title={workTab === "all" ? "You're all caught up" : "No tickets in this queue"} description="Assigned work will appear here. Enjoy the clear view." />}</div>
+        <div className="dash-panel-footer"><span>{work.data ? `Showing ${work.data.results.length} of ${work.data.count} tickets` : "Only your assigned tickets"}</span>{can("tickets.all.access") ? <Link to="/tickets?owner=me" className="dash-text-link">View my tickets <ArrowRight className="size-3" /></Link> : null}</div>
+      </section>
+      <section className="dash-surface dash-enter" style={delay(340)}>
+        <PanelHeader title="Needs attention" subtitle="Keep the next important action in sight"><span className="dash-panel-counter">Priority queue</span></PanelHeader>
+        <QueueTabs tabs={ATTENTION_TABS} selected={attentionTab} onSelect={setAttentionTab} label="Attention queue filter" />
+        <div className="dash-queue">{!canReadTickets ? <QuietState icon={ShieldCheck} title="Ticket access required" description="This panel is visible when your role can read tickets." /> : attention.isLoading ? <QueueLoading /> : attention.isError ? <PanelError onRetry={() => void attention.refetch()} /> : attention.data?.results.length ? attention.data.results.map(row => <TicketRow key={row.id} row={row} onOpen={setTicketId} overdue={attentionTab === "overdue"} />) : <QuietState icon={CheckCircle2} title={`No ${attentionTab} tickets`} description="Nothing needs your attention in this queue right now." />}</div>
+        <div className="dash-panel-footer"><span>{attention.data ? `${attention.data.count} tickets in this queue` : "Permission-scoped tickets"}</span>{can(`tickets.${attentionTab}.access`) ? <Link to={ATTENTION_ROUTES[attentionTab]} className="dash-text-link">View queue <ArrowRight className="size-3" /></Link> : null}</div>
+      </section>
+    </div>
+
+    <div className="dash-insights">
+      <section className="dash-surface dash-enter" style={delay(380)}><PanelHeader title="Bug workflow" subtitle="State distribution · visible bugs" />{charts.isLoading ? <QueueLoading /> : charts.isError ? <PanelError onRetry={() => void charts.refetch()} /> : <Distribution rows={statuses.map(row => ({ ...row, label: shortStatus(row.code, row.label) }))} empty="No bug workflow data" />}</section>
+      <section className="dash-surface dash-enter" style={delay(420)}><PanelHeader title="Top modules" subtitle="Where visible bugs are concentrated" />{charts.isLoading ? <QueueLoading /> : charts.isError ? <PanelError onRetry={() => void charts.refetch()} /> : <Distribution rows={modules} empty="No module data yet" />}</section>
+      <section className="dash-surface dash-enter" style={delay(460)}>
+        <PanelHeader title="Recent activity" subtitle="Ticket updates from the last 7 days">{canReadActivity ? <Link to="/updates/today" className="dash-text-link">Daily updates <ArrowUpRight className="size-3" /></Link> : null}</PanelHeader>
+        {!canReadActivity ? <QuietState icon={ShieldCheck} title="Activity access required" description="Your role needs Daily Updates and ticket viewing access." /> : activity.isLoading ? <QueueLoading /> : activity.isError ? <PanelError onRetry={() => void activity.refetch()} /> : !activity.data?.results.length ? <QuietState icon={Activity} title="No recent ticket activity" description="Assignments, fixes, closures and updates will appear here." /> : <ol className="dash-activity">{activity.data.results.map(row => <li key={`${row.kind}-${row.row_id}`} className="dash-event">
+          <span className="dash-event-icon">{row.category === "closed" ? <CheckCheck className="size-3" /> : row.category === "rectified" ? <ShieldCheck className="size-3" /> : <Activity className="size-3" />}</span>
+          <div className="dash-event-copy"><p><button type="button" className="dash-text-link" onClick={() => setTicketId(row.ticket_uuid)}>{row.reference}</button></p><p title={row.text}>{row.text}</p><span>{row.actor_name || "System"}</span></div><time className="dash-event-time" dateTime={row.at} title={formatDate(row.at)}>{relativeTime(row.at)}</time>
+        </li>)}</ol>}
+      </section>
+    </div>
+    <p className="dash-page-note"><CalendarDays className="mr-1 inline size-3" />{longDate()} · Data is scoped to your permissions. No sample figures.</p>
+    {ticketId ? <Suspense fallback={null}><TicketDetailDialog open ticketId={ticketId} onOpenChange={(open) => { if (!open) setTicketId(null); }} showVerifyClose={can("tickets.ticket.verify_close")} /></Suspense> : null}
+  </div>;
 }
+
+function Metric({ label, value, icon: Icon, color, note, to, delayMs }: { label: string; value: number; icon: LucideIcon; color: string; note: string; to?: string; delayMs: number }) {
+  const display = useCountUp(value, 750);
+  const content = <><div className="dash-stat-top"><span className="dash-stat-icon"><Icon className="size-3.5" aria-hidden /></span><h2>{label}</h2></div><p className="dash-stat-value" aria-label={`${value} ${label}`}>{display.toLocaleString()}</p><div className="dash-stat-bottom"><span>{note}</span>{to ? <ArrowUpRight className="size-3" aria-hidden /> : null}</div></>;
+  const style = { ...delay(delayMs), "--stat-color": color } as CSSProperties;
+  return to ? <Link to={to} className="dash-stat dash-surface dash-enter dash-stat-link" style={style}>{content}</Link> : <section className="dash-stat dash-surface dash-enter" style={style}>{content}</section>;
+}
+
+function Signal({ label, value, color }: { label: string; value: number; color: string }) {
+  return <span className="dash-signal"><i className="dash-signal-dot" style={{ background: color }} /><span>{label}</span><strong>{value.toLocaleString()}</strong></span>;
+}
+
+function PanelHeader({ title, subtitle, children }: { title: string; subtitle: string; children?: ReactNode }) {
+  return <header className="dash-panel-header"><div><h2>{title}</h2><p>{subtitle}</p></div>{children}</header>;
+}
+
+function QueueTabs<T extends string>({ tabs, selected, onSelect, label }: { tabs: { key: T; label: string }[]; selected: T; onSelect: (key: T) => void; label: string }) {
+  return <div className="dash-tabs" role="group" aria-label={label}>{tabs.map(tab => <button type="button" key={tab.key} aria-pressed={selected === tab.key} onClick={() => onSelect(tab.key)}>{tab.label}</button>)}</div>;
+}
+
+function TicketRow({ row, onOpen, overdue }: { row: SupportTicketRow; onOpen: (id: string) => void; overdue?: boolean }) {
+  const Icon = row.ticket_type === "BUG" ? Bug : row.ticket_type === "ACCESS_REQUEST" ? KeyRound : ClipboardList;
+  const status = row.effective_status || row.status;
+  return <button type="button" className="dash-ticket-row" onClick={() => onOpen(row.id)} aria-label={`Open ${row.reference}: ${row.title}`}>
+    <span className="dash-ticket-icon"><Icon className="size-3.5" aria-hidden /></span>
+    <span className="dash-ticket-copy"><strong title={row.title}>{row.title}</strong><span className="dash-ticket-meta"><span className="dash-ticket-ref">{row.reference}</span><span>·</span><span>{row.ticket_type === "BUG" ? "Bug" : row.ticket_type === "SERVICE_REQUEST" ? "Service" : row.ticket_type === "ACCESS_REQUEST" ? "Access" : "Unclassified"}</span></span></span>
+    {overdue && row.overdue_days ? <span className="dash-ticket-badge text-[var(--destructive)]"><Clock3 className="mr-1 inline size-2.5" />{row.overdue_days}d late</span> : <span className="dash-ticket-badge" data-status={status}>{status === "TESTING" ? "Rectified" : status.replaceAll("_", " ").toLowerCase().replace(/^./, letter => letter.toUpperCase())}</span>}
+  </button>;
+}
+
+function Distribution({ rows, empty }: { rows: ChartDatum[]; empty: string }) {
+  const max = Math.max(...rows.map(row => row.count), 1);
+  return rows.length ? <ul className="dash-bars">{rows.map((row, i) => <li key={`${row.code || row.label}-${i}`}><div className="dash-bar-label"><span title={row.label}>{row.label}</span><strong>{row.count.toLocaleString()}</strong></div><div className="dash-bar-track"><div className="dash-bar-fill" style={{ width: `${row.count / max * 100}%`, background: COLORS[i % COLORS.length] }} /></div></li>)}</ul> : <QuietState icon={Layers} title={empty} description="Your chart will fill in when there is data to show." />;
+}
+
+function QuietState({ icon: Icon = Inbox, title, description }: { icon?: LucideIcon; title: string; description: string }) {
+  return <div className="dash-empty"><Icon aria-hidden /><strong>{title}</strong><p>{description}</p></div>;
+}
+function PanelError({ onRetry }: { onRetry: () => void }) { return <ErrorState onRetry={onRetry} className="py-8" />; }
+function ChartLoading() { return <div className="p-5"><Skeleton className="h-[235px] w-full rounded-xl" /></div>; }
+function QueueLoading() { return <div className="space-y-4 p-4">{Array.from({ length: 4 }, (_, i) => <div key={i} className="flex items-center gap-3"><Skeleton className="size-7 rounded-lg" /><div className="flex-1"><Skeleton className="h-3 w-4/5" /><Skeleton className="mt-2 h-2 w-2/5" /></div></div>)}</div>; }

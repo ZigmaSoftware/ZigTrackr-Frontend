@@ -54,10 +54,31 @@ export interface TicketDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   ticketId: string | null;
   showVerifyClose: boolean;
+  initialAction?: "pending" | "hold" | "rectify" | null;
 }
 
-export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClose }: TicketDetailDialogProps) {
-  const [action, setAction] = useState<DialogKind | null>(null);
+const WORK_ACTION_CONFIRMATION = {
+  pending: {
+    title: "Move ticket to Pending?",
+    description: "This pauses the work timer. You can resume work when the ticket is ready.",
+    confirmLabel: "Continue to pending",
+  },
+  hold: {
+    title: "Put ticket On Hold?",
+    description: "This pauses the work timer while development is on hold.",
+    confirmLabel: "Put on hold",
+  },
+  rectify: {
+    title: "Send ticket to Testing?",
+    description: "This hands the corrected ticket to the testing team for verification.",
+    confirmLabel: "Send to testing",
+  },
+} as const;
+
+export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClose, initialAction }: TicketDetailDialogProps) {
+  const [action, setAction] = useState<DialogKind | null>(initialAction ?? null);
+  const [confirmAction, setConfirmAction] = useState<keyof typeof WORK_ACTION_CONFIRMATION | null>(null);
+  const actionOnly = initialAction != null || action === "pending" || action === "hold" || action === "rectify";
 
   const { data: ticket, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.tickets.detail(ticketId ?? ""),
@@ -71,7 +92,7 @@ export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClo
 
   return (
     <>
-      <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Root open={open && !actionOnly && confirmAction === null} onOpenChange={onOpenChange}>
         <Dialog.Portal>
           <Dialog.Overlay
             className="fixed inset-0 z-[60] bg-black/55 backdrop-blur-[2px]
@@ -92,6 +113,7 @@ export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClo
                 ticket={ticket}
                 onClose={() => onOpenChange(false)}
                 onAction={setAction}
+                onRequestConfirmation={setConfirmAction}
                 showVerifyClose={showVerifyClose}
               />
             )}
@@ -103,11 +125,29 @@ export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClo
           nested action dialog must be able to close without closing its parent. */}
       {ticket ? (
         <TicketActionDialog
-          open={action !== null}
+          open={open && action !== null}
           kind={action}
           ticket={ticket}
-          onOpenChange={(next) => (next ? null : setAction(null))}
+          onOpenChange={(next) => {
+            if (next) return;
+            setAction(null);
+            if (initialAction) onOpenChange(false);
+          }}
           onStatusChanged={showVerifyClose ? () => onOpenChange(false) : undefined}
+        />
+      ) : null}
+
+      {confirmAction ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(next) => { if (!next) setConfirmAction(null); }}
+          title={WORK_ACTION_CONFIRMATION[confirmAction].title}
+          description={WORK_ACTION_CONFIRMATION[confirmAction].description}
+          confirmLabel={WORK_ACTION_CONFIRMATION[confirmAction].confirmLabel}
+          onConfirm={() => {
+            setAction(confirmAction);
+            setConfirmAction(null);
+          }}
         />
       ) : null}
     </>
@@ -139,11 +179,12 @@ function LoadingShell({
 /* ---- HEADER + TABS ---- */
 
 function TicketDetailBody({
-  ticket, onClose, onAction, showVerifyClose,
+  ticket, onClose, onAction, onRequestConfirmation, showVerifyClose,
 }: {
   ticket: SupportTicketDetail;
   onClose: () => void;
   onAction: (kind: DialogKind) => void;
+  onRequestConfirmation: (kind: keyof typeof WORK_ACTION_CONFIRMATION) => void;
   showVerifyClose: boolean;
 }) {
   const { user, can, hasRole } = useAuth();
@@ -276,7 +317,13 @@ function TicketDetailBody({
                     <DropdownMenu.Item
                       key={option.kind}
                       disabled={Boolean(ticket.active_work_conflict && ["start", "retake", "return"].includes(option.kind))}
-                      onSelect={() => onAction(option.kind)}
+                      onSelect={() => {
+                        if (option.kind === "pending" || option.kind === "hold" || option.kind === "rectify") {
+                          onRequestConfirmation(option.kind);
+                        } else {
+                          onAction(option.kind);
+                        }
+                      }}
                       className="flex cursor-pointer items-center gap-3 rounded-md px-2.5 py-2
                                  outline-none transition-colors data-[highlighted]:bg-[var(--muted)]
                                  data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45"

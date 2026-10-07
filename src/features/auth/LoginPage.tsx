@@ -31,7 +31,6 @@ export function LoginPage() {
   } = useForm<LoginValues>({ resolver: zodResolver(schema) });
 
   const pageRef = useRef<HTMLDivElement>(null);
-  const [accessHelp, setAccessHelp] = useState(false);
   useEffect(() => {
     if (!pageRef.current) return;
     const previousTitle = document.title;
@@ -70,27 +69,25 @@ export function LoginPage() {
   return (
     <div className="zigma-login" ref={pageRef}>
       <div className="page" id="page">
-        <div className="loader" id="loader" aria-hidden="true">
-          <div className="loader__inner">
-            <div className="loader__mark">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle cx="12" cy="12" r="7.2" stroke="currentColor" strokeWidth="1.5" />
-                <circle cx="12" cy="12" r="3.6" stroke="currentColor" strokeWidth="1.5" />
-                <circle cx="12" cy="12" r="1" fill="currentColor" />
-                <path
-                  d="M12 2.4v2.8M12 18.8v2.8M21.6 12h-2.8M5.2 12H2.4"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-            <div className="loader__text">ZigTrackr</div>
-            <div className="loader__bar">
-              <span id="loaderBar"></span>
-            </div>
-          </div>
-        </div>
+        {/* Background video. muted + playsinline + loop are what allow
+            autoplay without a user gesture in every browser. VP9 first --
+            on this gradient footage it holds the gradient better than H.264
+            at under half the size -- with MP4 as the Safari fallback.
+            The 0.8x slowdown is baked into the files at encode time rather
+            than set via playbackRate, which would resample on the fly and
+            judder. */}
+        <video
+          className="bg-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        >
+          <source src="/login-bg.webm" type="video/webm" />
+          <source src="/login-bg.mp4" type="video/mp4" />
+        </video>
 
         <div className="ambient" aria-hidden="true">
           <div className="ambient__orb ambient__orb--a" data-orb="a"></div>
@@ -125,14 +122,6 @@ export function LoginPage() {
               <span>Issue Intelligence Workspace</span>
             </span>
           </a>
-
-          <div
-            className="topbar__status"
-            aria-label="System status: secure connection active"
-          >
-            <span className="status-dot"></span>
-            <span>Secure workspace</span>
-          </div>
         </header>
 
         <main className="layout">
@@ -249,7 +238,7 @@ export function LoginPage() {
                     </svg>
                     Protected access
                   </div>
-                  <span className="auth-card__index">ZB / 01</span>
+                  <span className="auth-card__index">ZT / 01</span>
                 </div>
 
                 <div className="reveal">
@@ -415,30 +404,18 @@ export function LoginPage() {
                       </span>
                       <span>Remember me</span>
                     </label>
-                    <a
-                      href="#access-help"
-                      className="assist-link"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        setAccessHelp((value) => !value);
-                      }}
-                      aria-expanded={accessHelp}
-                    >
-                      Need access help?
-                    </a>
                   </div>
 
-                  {accessHelp && (
-                    <p id="access-help" className="access-help" role="status">
-                      Contact your workspace administrator for account access or
-                      a password reset.
-                    </p>
-                  )}
                   <button
                     className="submit reveal"
                     id="submitButton"
                     type="submit"
                     disabled={isSubmitting}
+                    /* CSS user-select stops NEW selections but cannot clear one
+                       that already covers the button -- a drag beginning
+                       outside it still paints the label. Collapsing the
+                       selection on mousedown removes it in that case too. */
+                    onMouseDown={() => window.getSelection()?.removeAllRanges()}
                   >
                     <span className="submit__label" id="submitLabel">
                       {isSubmitting ? "Authenticating" : "Enter workspace"}

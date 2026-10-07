@@ -88,8 +88,10 @@
 }
 
 .zigma-login ::selection {
-  background: rgba(85, 215, 255, 0.22);
-  color: var(--white);
+  /* Was cyan from the original dark theme, which clashed with the violet
+     video background. Tied to the brand indigo instead. */
+  background: rgba(124, 92, 240, 0.26);
+  color: #2b1d63;
 }
 
 .zigma-login .page {
@@ -1505,4 +1507,405 @@
 .zigma-login .form[aria-busy="true"] .submit__progress {
   transform: scaleX(0.75);
   transition: transform 8s ease-out;
+}
+
+/* ======================================================================
+   VIDEO BACKGROUND THEME
+   ----------------------------------------------------------------------
+   The background is a bright lavender video (average luma ~224), so the
+   original near-black palette above would be invisible against it. This
+   block re-themes the page to dark-ink-on-light and lets the footage show
+   through at its own colours -- no filter, tint or grain is applied to the
+   video itself, deliberately: the brief was to keep its exact theme.
+
+   Palette is sampled from the footage so the UI belongs to it; the sphere's
+   violet happens to sit almost exactly on the ZigTrackr brand indigo.
+   ====================================================================== */
+.zigma-login {
+  --violet: #7c5cf0;
+  --violet-deep: #4f46e5;
+  --violet-ink: #2b1d63;
+  --ink-1: #2e2457;
+  --ink-2: #5b5280;
+  --ink-3: #7d75a0;
+  --line: rgba(80, 60, 160, 0.16);
+  --line-strong: rgba(80, 60, 160, 0.28);
+  /* Matches the video's own average colour so there is no flash of a wrong
+     background before the first frame paints. */
+  background: #e9dafa;
+  color: var(--ink-1);
+  color-scheme: light;
+}
+
+/* The source is 720x720 stretched across a much wider viewport, so it reads
+   soft. A deliberate blur turns that upscaling softness into an intentional
+   look rather than a defect -- and because the footage is an abstract
+   gradient, blurring costs no real detail. scale(1.08) hides the transparent
+   edge the blur would otherwise pull in at the borders. Matches the /track
+   page's treatment. */
+.zigma-login .bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(18px) saturate(1.12);
+  transform: scale(1.04);
+}
+
+/* The decorative dark-theme layers would muddy the footage. */
+.zigma-login .ambient,
+.zigma-login .neon-field,
+.zigma-login .neon-cursor,
+.zigma-login .cursor-lens,
+.zigma-login .scene,
+.zigma-login .scanbeam {
+  display: none;
+}
+
+.zigma-login .page {
+  position: relative;
+  z-index: 3;
+}
+
+/* ---- TYPE ---- */
+.zigma-login .headline,
+.zigma-login .auth-title {
+  color: var(--violet-ink);
+}
+.zigma-login .headline .accent {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--violet-deep);
+}
+.zigma-login .eyebrow {
+  color: var(--violet-deep);
+}
+.zigma-login .showcase__subcopy,
+.zigma-login .auth-copy,
+.zigma-login .field label,
+.zigma-login .check span:last-child {
+  color: var(--ink-2);
+}
+.zigma-login .showcase__footer,
+.zigma-login .auth-card__index,
+.zigma-login .auth-foot,
+.zigma-login .corner-code {
+  color: var(--ink-3);
+}
+.zigma-login .showcase__footer i {
+  background: var(--line-strong);
+}
+.zigma-login .brand__copy strong {
+  color: var(--ink-1);
+}
+.zigma-login .brand__copy span {
+  color: var(--ink-3);
+}
+.zigma-login .brand__mark {
+  background: var(--violet-deep);
+  color: #fff;
+  box-shadow: 0 8px 22px -8px rgba(79, 70, 229, 0.7);
+}
+
+/* ---- AUTH CARD: frosted glass over the footage ----
+   40% opacity / 40px blur -- the blur does the legibility work, which is
+   what lets the card stay this transparent without the text suffering. */
+.zigma-login .auth-card {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(40px) saturate(1.35);
+  -webkit-backdrop-filter: blur(40px) saturate(1.35);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 30px 80px -34px rgba(60, 40, 130, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.zigma-login .auth-card::after {
+  display: none;
+}
+.zigma-login .auth-card__secure {
+  color: var(--violet-deep);
+}
+
+/* ---- INPUTS ---- */
+.zigma-login .input-shell,
+.zigma-login .input-core {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: var(--line);
+}
+.zigma-login .input-core:focus-within {
+  border-color: var(--violet);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(124, 92, 240, 0.16);
+}
+.zigma-login .input-core input {
+  color: var(--ink-1);
+}
+.zigma-login .input-core input::placeholder {
+  color: var(--ink-3);
+}
+.zigma-login .input-core svg,
+.zigma-login .reveal-toggle {
+  color: var(--ink-3);
+}
+.zigma-login .reveal-toggle:hover {
+  color: var(--violet-deep);
+}
+.zigma-login .check__box {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+/* ---- SUBMIT ---- */
+.zigma-login .submit {
+  background: linear-gradient(96deg, var(--violet-deep), var(--violet));
+  color: #fff;
+  box-shadow: 0 14px 34px -12px rgba(79, 70, 229, 0.75);
+}
+.zigma-login .submit__label,
+.zigma-login .submit__icon {
+  color: var(--violet-deep);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.zigma-login .auth-card__secure svg {
+  color: var(--violet-deep);
+}
+
+/* ---- LOADER ---- */
+.zigma-login .loader {
+  background: #e9dafa;
+}
+.zigma-login .loader__text {
+  color: var(--violet-ink);
+}
+.zigma-login .loader__mark {
+  color: #fff;
+  background: linear-gradient(135deg, var(--violet-deep), var(--violet));
+  box-shadow: 0 10px 26px -10px rgba(79, 70, 229, 0.7);
+}
+.zigma-login .loader__bar {
+  background: var(--line);
+}
+.zigma-login .loader__bar span {
+  background: linear-gradient(90deg, var(--violet-deep), var(--violet));
+}
+
+/* A still frame is the right fallback when motion is unwelcome. */
+@media (prefers-reduced-motion: reduce) {
+  .zigma-login .bg-video {
+    display: none;
+  }
+}
+
+/* ======================================================================
+   SAMPLE-EXACT SIZING
+   ----------------------------------------------------------------------
+   The original dark layout was built at a much larger scale (50px title,
+   58px-tall inputs, full-width pill submit). These values are taken
+   directly from the approved preview so the shipped page matches it.
+   ====================================================================== */
+
+/* Loader removed from the markup -- hide any residual rule. */
+.zigma-login .loader {
+  display: none !important;
+}
+
+/* The sample card has no vertical edge strip. */
+.zigma-login .corner-code {
+  display: none;
+}
+
+.zigma-login .form {
+  margin-top: 0;
+  display: block;
+}
+
+.zigma-login .layout {
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(24px, 4vw, 64px);
+  padding: clamp(16px, 3vw, 40px) clamp(18px, 4vw, 46px) clamp(28px, 4vw, 52px);
+  align-items: center;
+}
+
+.zigma-login .topbar {
+  padding: 22px clamp(18px, 4vw, 46px);
+}
+
+/* ---- SHOWCASE ---- */
+.zigma-login .showcase {
+  min-height: 0;
+}
+.zigma-login .headline {
+  font-size: clamp(34px, 4.6vw, 60px);
+  line-height: 1.04;
+  font-weight: 600;
+  letter-spacing: -1.4px;
+}
+.zigma-login .eyebrow {
+  font-size: 12px;
+  letter-spacing: 2.6px;
+  margin-bottom: 20px;
+}
+.zigma-login .showcase__subcopy {
+  font-size: 15px;
+  line-height: 1.68;
+  max-width: 52ch;
+  width: auto;
+  margin-top: 20px;
+}
+.zigma-login .showcase__footer {
+  margin-top: 34px;
+  font-size: 12px;
+  gap: 14px;
+}
+
+/* ---- AUTH CARD ---- */
+.zigma-login .auth-wrap {
+  display: flex;
+  justify-content: center;
+  max-width: none;
+}
+/* The shell was a second nested frame around the card; the sample has one
+   card, so the shell becomes a plain pass-through wrapper. */
+.zigma-login .auth-shell {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  width: 100%;
+  max-width: 418px;
+}
+.zigma-login .auth-card {
+  max-width: 418px;
+  padding: 30px;
+  border-radius: 26px;
+}
+.zigma-login .auth-card__topline {
+  margin-bottom: 24px;
+  font-size: 11.5px;
+}
+.zigma-login .auth-title {
+  margin: 0 0 7px;
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+.zigma-login .auth-copy {
+  margin: 0 0 24px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  max-width: none;
+}
+
+/* ---- FIELDS ---- */
+.zigma-login .field {
+  margin-bottom: 16px;
+}
+.zigma-login .field label {
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: normal;
+  margin-bottom: 8px;
+}
+.zigma-login .input-shell {
+  padding: 0;
+  background: none;
+  border-radius: 14px;
+}
+.zigma-login .input-core {
+  min-height: 0;
+  padding: 12px 14px;
+  gap: 11px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+.zigma-login .input-core input {
+  font-size: 14px;
+}
+
+.zigma-login .form-row {
+  margin: 4px 0 22px;
+  font-size: 12.5px;
+}
+
+/* ---- SUBMIT: flat rounded rect, not a 58px pill ---- */
+.zigma-login .submit {
+  min-height: 0;
+  margin-top: 0;
+  padding: 14px;
+  border-radius: 15px;
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.zigma-login .submit__icon {
+  display: none;
+}
+.zigma-login .submit__label {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: normal;
+}
+
+.zigma-login .auth-foot {
+  margin: 20px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  justify-content: center;
+  text-align: center;
+}
+
+/* ---- AUTOFILL + SELECTION ----
+   Chrome paints its own pale-blue background on autofilled inputs and ignores
+   `background`. Forcing a solid #fff inset shadow removes the blue but paints
+   an opaque white block inside the frosted field, which is worse. Chrome will
+   not honour a transparent shadow either, so instead the UA background is kept
+   out of reach with a very long transition delay: the colour change never gets
+   a chance to apply and the field keeps its own translucent surface. */
+.zigma-login input:-webkit-autofill,
+.zigma-login input:-webkit-autofill:hover,
+.zigma-login input:-webkit-autofill:focus,
+.zigma-login input:-webkit-autofill:active,
+.zigma-login input:autofill {
+  -webkit-text-fill-color: var(--ink-1) !important;
+  caret-color: var(--ink-1);
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  transition: background-color 9999s ease-in-out 0s !important;
+}
+
+/* The submit is a button, not prose. `user-select:none` alone did not hold --
+   a drag that STARTS outside the button still extends a selection across it,
+   so the label kept highlighting. Making the button a non-selectable region
+   AND suppressing ::selection on its subtree is what actually stops it. */
+.zigma-login .submit,
+.zigma-login .submit * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* `!important` is needed: the page-wide `.zigma-login ::selection` rule is
+   equally specific, and the white highlight behind the label came from its
+   `color: var(--white)`. */
+.zigma-login .submit::selection,
+.zigma-login .submit *::selection {
+  background: transparent !important;
+  color: #fff !important;
+}
+.zigma-login .submit::-moz-selection,
+.zigma-login .submit *::-moz-selection {
+  background: transparent !important;
+  color: #fff !important;
+}
+/* The fields themselves must stay selectable. */
+.zigma-login input,
+.zigma-login textarea {
+  user-select: text;
+  -webkit-user-select: text;
 }

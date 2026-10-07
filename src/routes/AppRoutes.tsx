@@ -12,6 +12,7 @@ const LoginPage = lazy(() => import("@/features/auth/LoginPage").then((m) => ({ 
 const TrackTicketPage = lazy(() => import("@/features/public/TrackTicketPage").then((m) => ({ default: m.TrackTicketPage })));
 const DashboardPage = lazy(() => import("@/features/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const ChatPage = lazy(() => import("@/features/chat/ChatPage").then((m) => ({ default: m.ChatPage })));
+const DailyUpdatesPage = lazy(() => import("@/features/daily-updates/DailyUpdatesPage").then((m) => ({ default: m.DailyUpdatesPage })));
 const BugListPage = lazy(() => import("@/features/bugs/BugListPage").then((m) => ({ default: m.BugListPage })));
 const BugDetailPage = lazy(() => import("@/features/bugs/BugDetailPage").then((m) => ({ default: m.BugDetailPage })));
 const BugFormPage = lazy(() => import("@/features/bugs/BugFormPage").then((m) => ({ default: m.BugFormPage })));
@@ -84,39 +85,39 @@ export function AppRoutes() {
 
           {/* ---- TICKETS: unified domain with preset-filtered list routes ---- */}
           <Route path="/tickets/new" element={
-            <ProtectedRoute permissions={["tickets.ticket.create"]}><CreateTicketPage /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.create.access"]}><CreateTicketPage /></ProtectedRoute>
           } />
           <Route path="/tickets/unassigned" element={
-            <ProtectedRoute permissions={["tickets.ticket.view"]}><TicketListPage presetKey="unassigned" /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.unassigned.access"]}><TicketListPage presetKey="unassigned" /></ProtectedRoute>
           } />
           <Route path="/tickets/reassign" element={
-            <ProtectedRoute permissions={["tickets.ticket.reassign"]}><ReassignTicketsPage /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.reassign.access"]}><ReassignTicketsPage /></ProtectedRoute>
           } />
           <Route path="/tickets" element={
-            <ProtectedRoute permissions={["tickets.ticket.view"]}><TicketListPage presetKey="all" /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.all.access"]}><TicketListPage presetKey="all" /></ProtectedRoute>
           } />
           <Route path="/tickets/review" element={<Navigate to="/tickets/unassigned" replace />} />
           <Route path="/tickets/bugs" element={
-            <ProtectedRoute permissions={["tickets.ticket.view"]}><TicketListPage presetKey="bugs" /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.bugs.access"]}><TicketListPage presetKey="bugs" /></ProtectedRoute>
           } />
           <Route path="/tickets/service" element={<Navigate to="/tickets/services" replace />} />
           <Route path="/tickets/services" element={
-            <ProtectedRoute permissions={["tickets.ticket.view"]}><TicketListPage presetKey="services" /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.services.access"]}><TicketListPage presetKey="services" /></ProtectedRoute>
           } />
           <Route path="/tickets/access" element={
-            <ProtectedRoute permissions={["tickets.ticket.view"]}><TicketListPage presetKey="access" /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.access.access"]}><TicketListPage presetKey="access" /></ProtectedRoute>
           } />
           <Route path="/tickets/critical" element={
-            <ProtectedRoute permissions={["tickets.ticket.view"]}><TicketListPage presetKey="critical" /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.critical.access"]}><TicketListPage presetKey="critical" /></ProtectedRoute>
           } />
           <Route path="/tickets/overdue" element={
-            <ProtectedRoute permissions={["tickets.ticket.view"]}><TicketListPage presetKey="overdue" /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.overdue.access"]}><TicketListPage presetKey="overdue" /></ProtectedRoute>
           } />
           <Route path="/tickets/testing" element={
-            <ProtectedRoute permissions={["tickets.ticket.view"]}><TicketListPage presetKey="testing" /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.testing.access"]}><TicketListPage presetKey="testing" /></ProtectedRoute>
           } />
           <Route path="/tickets/closed" element={
-            <ProtectedRoute permissions={["tickets.ticket.view"]}><TicketListPage presetKey="closed" /></ProtectedRoute>
+            <ProtectedRoute permissions={["tickets.closed.access"]}><TicketListPage presetKey="closed" /></ProtectedRoute>
           } />
           {/* The detail page is now a dialog on the list. The id is carried
               across as ?ticket= so an old link still opens the right ticket
@@ -125,7 +126,11 @@ export function AppRoutes() {
 
           {/* ---- DAILY UPDATES: also views of the same domain ---- */}
           <Route path="/updates/pending" element={<BugListPage presetKey="update-pending" />} />
-          <Route path="/updates/today" element={<BugListPage presetKey="daily-updates" />} />
+          <Route path="/updates/today" element={
+            <ProtectedRoute permissions={["bugs.update.view"]}>
+              <ProtectedRoute permissions={["tickets.ticket.view"]}><DailyUpdatesPage /></ProtectedRoute>
+            </ProtectedRoute>
+          } />
           <Route path="/updates/mine" element={<BugListPage presetKey="assigned" />} />
           <Route path="/updates/team" element={<BugListPage presetKey="all" />} />
 

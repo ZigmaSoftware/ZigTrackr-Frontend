@@ -18,8 +18,6 @@ export function setupLoginAnimations(root) {
     ).matches;
     const gsapAvailable = true;
 
-    const loader = root.querySelector("#loader");
-    const loaderBar = root.querySelector("#loaderBar");
     const authShell = root.querySelector("#authShell");
     const authCard = root.querySelector("#authCard");
     const scene = root.querySelector("#scene");
@@ -31,7 +29,6 @@ export function setupLoginAnimations(root) {
     const passwordToggle = root.querySelector("#passwordToggle");
 
     const setStaticFallback = () => {
-      if (loader) loader.style.display = "none";
       root.querySelectorAll(".reveal").forEach((el) => {
         el.style.opacity = "1";
         el.style.transform = "none";
@@ -46,21 +43,7 @@ export function setupLoginAnimations(root) {
     } else {
       const intro = gsap.timeline({ defaults: { ease: "power4.out" } });
       intro
-        .to(loaderBar, { scaleX: 1, duration: 0.9, ease: "power3.inOut" })
-        .to(
-          ".loader__mark",
-          { scale: 0.92, rotate: 6, duration: 0.35, ease: "back.in(1.6)" },
-          "-=0.14",
-        )
-        .to(".loader__inner", { y: -18, opacity: 0, duration: 0.45 }, "+=0.06")
-        .to(loader, { yPercent: -104, duration: 1.05, ease: "power4.inOut" })
-        .set(loader, { display: "none" })
-        .from(".brand", { y: -18, opacity: 0, duration: 0.75 }, "-=0.55")
-        .from(
-          ".topbar__status",
-          { y: -18, opacity: 0, duration: 0.75 },
-          "<0.05",
-        )
+        .from(".brand", { y: -18, opacity: 0, duration: 0.75 })
         .from(
           ".headline .line > span",
           {

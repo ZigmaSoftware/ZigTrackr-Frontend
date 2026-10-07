@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NAVIGATION, flattenNavigation } from "@/config/navigation";
+import { NAVIGATION, filterNavigation, flattenNavigation } from "@/config/navigation";
 import { MASTER_CONFIGS } from "@/features/masters/configs";
 import { REPORT_CONFIGS } from "@/features/reports/configs";
 
@@ -43,6 +43,15 @@ function isRoutable(path: string): boolean {
 }
 
 describe("navigation", () => {
+  it("shows ticket creation and management submodules independently", () => {
+    const codes = new Set(["tickets.ticket.view", "tickets.unassigned.access", "tickets.services.access"]);
+    const visible = flattenNavigation(filterNavigation(NAVIGATION, (code) => codes.has(code))).map((item) => item.to);
+    expect(visible).toContain("/tickets/unassigned");
+    expect(visible).toContain("/tickets/services");
+    expect(visible).not.toContain("/tickets");
+    expect(visible).not.toContain("/tickets/reassign");
+    expect(visible).not.toContain("/tickets/bugs");
+  });
   it("every sidebar link resolves to a route", () => {
     const broken = flattenNavigation(NAVIGATION)
       .map((item) => item.to)

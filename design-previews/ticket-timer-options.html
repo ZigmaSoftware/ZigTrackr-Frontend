@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZigTrackr | Ticket timer concepts</title>
+  <style>
+    :root{color-scheme:light;--ink:#172033;--muted:#718096;--border:#dfe5ee;--canvas:#f3f5f8;--paper:#fff;--brand:#4f46e5;--orange:#ff9e36;--orange-ink:#b45c07;--green:#16846a;--slate:#101216}
+    *{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font:14px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button{font:inherit;cursor:pointer}button:focus-visible{outline:2px solid var(--brand);outline-offset:3px}h1,h2,h3,p{margin:0}svg{width:16px;height:16px;display:block;flex:none}
+    .topbar{height:60px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px}.brand{display:flex;align-items:center;gap:10px;font-weight:750}.brand-mark{width:31px;height:31px;border-radius:9px;background:var(--brand);color:white;display:grid;place-items:center}.brand-mark svg{width:18px;height:18px}.top-note{color:var(--muted);font-size:12px}.page{max-width:1440px;margin:auto;padding:30px 28px 48px}.eyebrow{color:var(--brand);font-size:10px;letter-spacing:1.4px;font-weight:750;text-transform:uppercase}.title-row{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin:7px 0 22px}.title-row h1{font-size:25px;line-height:1.2;font-weight:750}.title-row p{margin-top:6px;color:var(--muted);font-size:12px}.selection-state{border:1px solid var(--border);background:white;color:var(--muted);border-radius:7px;padding:8px 11px;font-size:11px;white-space:nowrap}.selection-state b{color:var(--ink)}
+    .options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;align-items:start}.option{min-width:0;background:white;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 2px 7px #17203308;transition:border-color .15s,box-shadow .15s}.option.chosen{border-color:#7168df;box-shadow:0 0 0 2px #7168df24,0 7px 22px #1720330c}.option-head{min-height:79px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:15px 16px 12px;border-bottom:1px solid var(--border)}.option-id{color:#838da0;font-size:9px;font-weight:750;letter-spacing:1px}.option-head h2{font-size:15px;line-height:1.25;margin-top:3px}.option-head p{font-size:10px;color:var(--muted);margin-top:4px}.choose{height:29px;flex:none;border:1px solid var(--border);border-radius:6px;background:white;padding:0 10px;color:#4c5870;font-size:10px;font-weight:650}.choose:hover,.chosen .choose{border-color:#bcb8f2;color:var(--brand);background:#f6f5ff}
+    .sample{padding:13px 15px 14px;background:#fbfcfe;border-bottom:1px solid var(--border)}.sample-label{display:flex;justify-content:space-between;gap:8px;color:#8993a4;font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin-bottom:8px}.sample-ticket{display:grid;grid-template-columns:1fr auto;gap:4px 9px;align-items:center}.ticket-no{font:600 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--brand)}.ticket-status{justify-self:end;border:1px solid #cfe7e0;background:#eef8f4;color:#26745f;border-radius:5px;padding:3px 7px;font-size:9px;font-weight:700}.ticket-title{font-size:11px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ticket-owner{font-size:9px;color:var(--muted)}
+    .demo{padding:16px;min-height:320px}.demo-caption{display:flex;align-items:center;justify-content:space-between;color:#8993a4;font-size:9px;font-weight:700;letter-spacing:.75px;text-transform:uppercase;margin-bottom:12px}.stage{min-height:255px;display:flex;align-items:flex-start;justify-content:center;padding:16px 8px}.control-stack{width:100%;max-width:290px;display:flex;flex-direction:column;align-items:center;gap:12px}
+    /* A: the closest match to the supplied Dynamic Island reference. */
+    .island-trigger{height:43px;width:166px;display:flex;align-items:center;justify-content:space-between;border:0;border-radius:999px;background:#050607;color:#f4f5f7;padding:0 15px 0 9px;box-shadow:0 3px 9px #08090b26}.ring{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;background:conic-gradient(var(--orange) 0 292deg,#37383c 292deg)}.ring:after{content:"";width:21px;height:21px;border-radius:50%;background:#050607;grid-area:1/1}.ring svg{z-index:1;color:#d1d5db;width:13px;height:13px;grid-area:1/1}.digits{font:700 15px/1 ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;letter-spacing:0}.island-panel{width:100%;border:2px solid var(--orange);border-radius:24px;background:#050607;color:#f7f7f8;padding:11px 12px 10px;box-shadow:0 11px 25px #11182725;transition:opacity .15s,transform .15s}.island-panel[hidden],.light-menu[hidden],.split-menu[hidden]{display:none}.island-top{display:flex;align-items:center;justify-content:space-between;color:#999ba1;font-size:9px;font-weight:700;letter-spacing:.6px}.island-live{color:#d1d5db;display:flex;align-items:center;gap:5px}.island-live:before{content:"";width:5px;height:5px;border-radius:50%;background:#36b37e}.island-clock{display:grid;grid-template-columns:40px 1fr 40px;align-items:center;gap:7px;padding:16px 2px 13px;text-align:center}.circle-action{width:36px;height:36px;border:0;border-radius:50%;background:#26272b;color:white;display:grid;place-items:center}.circle-action svg{width:15px;height:15px}.circle-action.stop{background:#4a1314;color:#ff6464}.big-time{font:700 31px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0;font-variant-numeric:tabular-nums;color:#fff}.clock-sub{margin-top:4px;color:#909198;font-size:10px}.island-rule{height:1px;background:#292a2e;margin:0 2px 7px}.island-actions{display:grid;gap:3px}.island-action{width:100%;min-height:37px;display:flex;align-items:center;gap:10px;border:0;border-radius:8px;background:transparent;color:#f1f1f3;text-align:left;padding:0 8px;font-size:11px}.island-action:hover{background:#202125}.action-symbol{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#26272b;color:#d1d5db}.action-symbol svg{width:13px;height:13px}.action-note{margin-left:auto;color:#93959c;font-size:9px}
+    /* B: a calm light control that sits naturally in a dense work table. */
+    .light-trigger{height:40px;width:184px;display:flex;align-items:center;gap:9px;border:1px solid #cbd8f0;border-radius:8px;background:#f4f7ff;color:#1e2b4a;padding:0 10px;box-shadow:0 2px 5px #293c6b0c}.light-orbit{width:23px;height:23px;border-radius:50%;background:conic-gradient(#5865d9 0 292deg,#dce4f4 292deg);display:grid;place-items:center;flex:none}.light-orbit:after{content:"";width:17px;height:17px;border-radius:50%;background:#f4f7ff;grid-area:1/1}.light-time{font:700 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:#24345a;font-variant-numeric:tabular-nums}.light-live{font-size:9px;color:#4d5b79;margin-left:auto}.light-caret{color:#687795;width:13px;height:13px}.light-menu{width:100%;border:1px solid #d5def1;border-radius:8px;background:#f7f9fe;box-shadow:0 10px 24px #293c6b16;padding:6px}.light-menu-head{padding:7px 8px 9px;border-bottom:1px solid #e2e8f4;margin-bottom:4px}.light-menu-head strong{display:block;font-size:11px;color:#1c2a48}.light-menu-head span{font-size:9px;color:#687795}.light-action{width:100%;min-height:48px;display:flex;align-items:center;gap:10px;border:0;border-radius:6px;background:#f7f9fe;text-align:left;padding:5px 8px;color:#24314d}.light-action:hover{background:#ebf0ff}.light-action .action-symbol{background:#e8edff;color:#4d5bc4}.light-action>span:nth-child(2){display:flex;min-width:0;flex-direction:column;gap:2px}.light-action b{font-size:10px;line-height:1.25}.light-action small.action-note{display:block;margin:0;color:#64728f;font-size:9px;line-height:1.25;white-space:normal}
+    /* C: a compact split control, with its menu in the same neutral surface. */
+    .split-trigger{height:39px;display:flex;align-items:stretch;border:1px solid #24262b;border-radius:8px;background:#0e1013;color:#f4f5f7;overflow:hidden;box-shadow:0 2px 6px #11182720}.split-main{min-width:140px;display:flex;align-items:center;gap:9px;border:0;background:transparent;color:inherit;padding:0 11px}.split-ring{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--orange) 0 292deg,#493a2b 292deg)}.split-ring>span{width:16px;height:16px;border-radius:50%;background:#0e1013;grid-area:1/1}.split-time{font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}.split-caret{width:35px;display:grid;place-items:center;border:0;border-left:1px solid #34363a;background:#17191d;color:#c3c6cc}.split-caret:hover{background:#25272b}.split-menu{width:100%;border:1px solid #dce2ea;border-radius:8px;background:#fff;padding:7px;box-shadow:0 10px 24px #17203318}.split-menu-top{display:flex;justify-content:space-between;align-items:center;padding:5px 6px 9px;border-bottom:1px solid #edf0f4;margin-bottom:5px}.split-menu-top strong{font-size:11px}.mini-time{font:650 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#344054}.split-action{min-height:40px;width:100%;display:flex;align-items:center;gap:9px;padding:4px 7px;border:0;border-radius:6px;background:white;text-align:left;color:#283348;font-size:10px;font-weight:600}.split-action:hover{background:#f5f7fa}.split-action svg{width:14px;height:14px;color:#67748a}.split-action.testing svg{color:#16846a}.split-tag{margin-left:auto;color:#8993a3;font-size:9px;font-weight:450}
+    /* D-F: gold stays on borders and progress accents, never on text or icons. */
+    .frame-trigger,.rail-trigger{height:42px;width:194px;display:flex;align-items:center;gap:10px;border:1.5px solid #c9a45c;border-radius:10px;background:#fff;color:var(--ink);padding:0 11px;box-shadow:0 2px 6px #1720330c}
+    .frame-ring,.rail-ring{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#c9a45c 0 292deg,#e8ebf0 292deg);flex:none}.frame-ring:after,.rail-ring:after{content:"";width:17px;height:17px;border-radius:50%;background:#fff;grid-area:1/1}.frame-time,.rail-time{font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace;color:#172033;font-variant-numeric:tabular-nums}.frame-state,.rail-state{margin-left:auto;color:#16846a;font-size:9px;font-weight:700}
+    .frame-menu,.rail-menu{width:100%;border:1.5px solid #c9a45c;border-radius:10px;background:#fff;padding:7px;box-shadow:0 10px 24px #17203313}.frame-menu-head,.rail-menu-head{display:flex;align-items:center;justify-content:space-between;padding:5px 6px 9px;border-bottom:1px solid #edf0f4;margin-bottom:4px}.frame-menu-head strong,.rail-menu-head strong{font-size:11px}.frame-menu-head span,.rail-menu-head span{font:650 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:#344054}
+    .frame-action,.rail-action{width:100%;min-height:42px;display:flex;align-items:center;gap:10px;border:0;border-radius:7px;background:#fff;color:#263247;text-align:left;padding:5px 7px;font-size:10px;font-weight:650}.frame-action:hover,.rail-action:hover{background:#f5f7fa}.neutral-icon{width:24px;height:24px;border:1px solid #e2e6ed;border-radius:7px;display:grid;place-items:center;background:#f7f8fa;color:#667085;flex:none}.neutral-icon svg{width:13px;height:13px}.frame-action small,.rail-action small{margin-left:auto;color:#7c8799;font-size:9px;font-weight:450}
+    .dark-trigger{height:42px;width:190px;display:flex;align-items:center;gap:10px;border:1.5px solid #c9a45c;border-radius:999px;background:#17191e;color:#fff;padding:0 13px;box-shadow:0 4px 12px #10121622}.dark-ring{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#c9a45c 0 292deg,#42444a 292deg);flex:none}.dark-ring:after{content:"";width:17px;height:17px;border-radius:50%;background:#17191e;grid-area:1/1}.dark-time{font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;font-variant-numeric:tabular-nums}.dark-live{margin-left:auto;display:flex;align-items:center;gap:5px;color:#c7cbd3;font-size:9px;font-weight:650}.dark-live:before{content:"";width:6px;height:6px;border-radius:50%;background:#36b37e}
+    .dark-menu{width:100%;border:1.5px solid #c9a45c;border-radius:12px;background:#17191e;color:#f4f5f7;padding:7px;box-shadow:0 12px 25px #10121630}.dark-menu .frame-menu-head{border-color:#34363b}.dark-menu .frame-menu-head span{color:#d3d6dd}.dark-action{width:100%;min-height:42px;display:flex;align-items:center;gap:10px;border:0;border-radius:8px;background:transparent;color:#f2f3f5;text-align:left;padding:5px 7px;font-size:10px;font-weight:600}.dark-action:hover{background:#25272d}.dark-action .neutral-icon{background:#292b31;border-color:#393c43;color:#d1d4da}.dark-action small{margin-left:auto;color:#a5aab4;font-size:9px;font-weight:450}
+    .rail-trigger{width:202px;border-radius:8px;border-left:4px solid #c9a45c;padding-left:9px}.rail-ring{width:22px;height:22px}.rail-ring:after{width:15px;height:15px}.rail-menu{border-left:4px solid #c9a45c;padding-left:8px}.rail-menu-head{padding-left:4px}.rail-action .neutral-icon{border-radius:50%}.rail-action.testing .neutral-icon{color:#16846a;border-color:#d5ebe3;background:#f1f8f5}
+    .frame-menu[hidden],.dark-menu[hidden],.rail-menu[hidden]{display:none}
+    .option-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--border);padding:10px 15px;color:#8490a2;font-size:9px}.option-foot b{font-weight:650;color:#536079}.choice-dot{width:6px;height:6px;border-radius:50%;background:#c2c8d2;display:inline-block;margin-right:5px}.chosen .choice-dot{background:var(--brand)}
+    .mobile-hint{display:none;margin-top:14px;color:#8993a4;font-size:10px}
+    @media(max-width:1050px){.options{grid-template-columns:repeat(2,minmax(0,1fr))}.option:last-child{grid-column:1/-1}.option:last-child .stage{max-width:390px;margin:auto}}
+    @media(max-width:680px){.topbar{height:54px;padding:0 15px}.top-note{font-size:10px}.page{padding:21px 12px 34px}.title-row{align-items:flex-start;flex-direction:column;margin-bottom:15px}.title-row h1{font-size:21px}.title-row p{max-width:34ch}.selection-state{font-size:10px}.options{grid-template-columns:minmax(0,1fr);gap:12px}.option:last-child{grid-column:auto}.option-head{min-height:70px;padding:13px}.demo{padding:13px;min-height:300px}.stage{min-height:246px;padding:12px 4px}.sample{padding:11px 13px}.option-foot{padding:9px 13px}.mobile-hint{display:block}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 3.5 7.5v9L12 21l8.5-4.5v-9L12 3Z"/><path d="m8 12 2.5 2.5L16 9"/></svg></span><span>ZigTrackr</span></div>
+    <span class="top-note">Ticket action concepts · October 2026</span>
+  </header>
+  <main class="page">
+    <span class="eyebrow">Ticket workflow · visual comparison</span>
+    <div class="title-row">
+      <div><h1>Choose a timer direction</h1><p>Each concept shows the same active ticket, elapsed time, and the three work status actions.</p></div>
+      <div class="selection-state" id="selectionState">Selected: <b>none</b></div>
+    </div>
+
+    <section class="options" aria-label="Timer design concepts">
+      <article class="option" data-option="A">
+        <header class="option-head"><div><span class="option-id">OPTION A</span><h2>Dynamic Island</h2><p>Closest to the supplied timer reference</p></div><button class="choose" type="button">Choose A</button></header>
+        <div class="sample"><div class="sample-label"><span>All Tickets</span><span>Active work</span></div><div class="sample-ticket"><span class="ticket-no">TKT-2610-0001</span><span class="ticket-status">IN PROGRESS</span><span class="ticket-title">Correction - list page is not showing data</span><span class="ticket-owner">Developer · You</span></div></div>
+        <div class="demo"><div class="demo-caption"><span>Collapsed · expanded</span><span>Click capsule to toggle</span></div><div class="stage"><div class="control-stack">
+          <button class="island-trigger timer-toggle" type="button" aria-expanded="true"><span class="ring" aria-hidden="true"></span><span class="digits clock-value">13:12</span></button>
+          <div class="island-panel">
+            <div class="island-top"><span>WORK SESSION</span><span class="island-live">IN PROGRESS</span></div>
+            <div class="island-clock"><button type="button" class="circle-action" aria-label="Pause work"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button><div><div class="big-time clock-value">13:12</div><div class="clock-sub">Elapsed work time</div></div><button type="button" class="circle-action stop" aria-label="Stop timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7l10 10M17 7 7 17"/></svg></button></div>
+            <div class="island-rule"></div><div class="island-actions">
+              <button class="island-action choose-status" data-status="Pending" type="button"><span class="action-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14M16 5v14"/></svg></span>Move to pending<span class="action-note">Pause work</span></button>
+              <button class="island-action choose-status" data-status="On hold" type="button"><span class="action-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M12 4v16"/></svg></span>Put on hold<span class="action-note">Pause work</span></button>
+              <button class="island-action choose-status" data-status="Testing" type="button"><span class="action-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6m-5 0v7l-5.5 9a1.3 1.3 0 0 0 1.1 2h12.8a1.3 1.3 0 0 0 1.1-2L14 10V3M7.5 16h9"/></svg></span>Rectified - send to testing<span class="action-note">Verify fix</span></button>
+            </div>
+          </div>
+        </div></div></div>
+        <footer class="option-foot"><span><i class="choice-dot"></i><b>Expressive, highly recognizable</b></span><span>Best match to reference</span></footer>
+      </article>
+
+      <article class="option" data-option="B">
+        <header class="option-head"><div><span class="option-id">OPTION B</span><h2>Quiet table control</h2><p>Light surface with a clear live timer</p></div><button class="choose" type="button">Choose B</button></header>
+        <div class="sample"><div class="sample-label"><span>Service Requests</span><span>Active work</span></div><div class="sample-ticket"><span class="ticket-no">TKT-2610-0013</span><span class="ticket-status">IN PROGRESS</span><span class="ticket-title">Create user access for finance team</span><span class="ticket-owner">Developer · You</span></div></div>
+        <div class="demo"><div class="demo-caption"><span>Table-first</span><span>Click control to toggle</span></div><div class="stage"><div class="control-stack">
+          <button class="light-trigger timer-toggle" type="button" aria-expanded="true"><span class="light-orbit"></span><span class="light-time clock-value">13:12</span><span class="light-live">LIVE</span><svg class="light-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+          <div class="light-menu"><div class="light-menu-head"><strong>Work in progress</strong><span>Started today · Developer</span></div>
+            <button class="light-action choose-status" data-status="Pending" type="button"><span class="action-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14M16 5v14"/></svg></span><span><b>Move to pending</b><small class="action-note">Pause while waiting for information</small></span></button>
+            <button class="light-action choose-status" data-status="On hold" type="button"><span class="action-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M12 4v16"/></svg></span><span><b>Put on hold</b><small class="action-note">Pause development work</small></span></button>
+            <button class="light-action choose-status" data-status="Testing" type="button"><span class="action-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6m-5 0v7l-5.5 9a1.3 1.3 0 0 0 1.1 2h12.8a1.3 1.3 0 0 0 1.1-2L14 10V3M7.5 16h9"/></svg></span><span><b>Rectified - send to testing</b><small class="action-note">Hand off for verification</small></span></button>
+          </div>
+        </div></div></div>
+        <footer class="option-foot"><span><i class="choice-dot"></i><b>Fits existing table surfaces</b></span><span>Most restrained</span></footer>
+      </article>
+
+      <article class="option" data-option="C">
+        <header class="option-head"><div><span class="option-id">OPTION C</span><h2>Split session button</h2><p>Dark timer paired with a separate menu trigger</p></div><button class="choose" type="button">Choose C</button></header>
+        <div class="sample"><div class="sample-label"><span>Bug Requests</span><span>Active work</span></div><div class="sample-ticket"><span class="ticket-no">TKT-2610-0022</span><span class="ticket-status">IN PROGRESS</span><span class="ticket-title">Search results page returns an error</span><span class="ticket-owner">Developer · You</span></div></div>
+        <div class="demo"><div class="demo-caption"><span>Segmented control</span><span>Click control to toggle</span></div><div class="stage"><div class="control-stack">
+          <div class="split-trigger"><button type="button" class="split-main"><span class="split-ring" aria-hidden="true"><span></span></span><span class="split-time clock-value">13:12</span></button><button type="button" class="split-caret timer-toggle" aria-expanded="true" aria-label="Change work status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button></div>
+          <div class="split-menu"><div class="split-menu-top"><strong>Change status</strong><span class="mini-time clock-value">13:12</span></div>
+            <button class="split-action choose-status" data-status="Pending" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14M16 5v14"/></svg>Move to pending<span class="split-tag">Pause</span></button>
+            <button class="split-action choose-status" data-status="On hold" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M12 4v16"/></svg>Put on hold<span class="split-tag">Pause</span></button>
+            <button class="split-action testing choose-status" data-status="Testing" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6m-5 0v7l-5.5 9a1.3 1.3 0 0 0 1.1 2h12.8a1.3 1.3 0 0 0 1.1-2L14 10V3M7.5 16h9"/></svg>Rectified - send to testing<span class="split-tag">Verify</span></button>
+          </div>
+        </div></div></div>
+        <footer class="option-foot"><span><i class="choice-dot"></i><b>Clear action separation</b></span><span>Most compact</span></footer>
+      </article>
+
+      <article class="option" data-option="D">
+        <header class="option-head"><div><span class="option-id">OPTION D</span><h2>Framed light timer</h2><p>Warm outline, neutral type and controls</p></div><button class="choose" type="button">Choose D</button></header>
+        <div class="sample"><div class="sample-label"><span>All Tickets</span><span>Active work</span></div><div class="sample-ticket"><span class="ticket-no">TKT-2610-0031</span><span class="ticket-status">IN PROGRESS</span><span class="ticket-title">Invoice export fails on large files</span><span class="ticket-owner">Developer · You</span></div></div>
+        <div class="demo"><div class="demo-caption"><span>Framed control</span><span>Click to toggle</span></div><div class="stage"><div class="control-stack">
+          <button class="frame-trigger timer-toggle" type="button" aria-expanded="true"><span class="frame-ring"></span><span class="frame-time clock-value">13:12</span><span class="frame-state">ACTIVE</span></button>
+          <div class="frame-menu"><div class="frame-menu-head"><strong>Work session</strong><span class="clock-value">13:12</span></div>
+            <button class="frame-action choose-status" data-status="Pending" type="button"><span class="neutral-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14M16 5v14"/></svg></span>Move to pending<small>Pause timer</small></button>
+            <button class="frame-action choose-status" data-status="On hold" type="button"><span class="neutral-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>Put on hold<small>Pause timer</small></button>
+            <button class="frame-action choose-status" data-status="Testing" type="button"><span class="neutral-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6m-5 0v7l-5.5 9a1.3 1.3 0 0 0 1.1 2h12.8a1.3 1.3 0 0 0 1.1-2L14 10V3"/></svg></span>Rectified - send to testing<small>Verify fix</small></button>
+          </div>
+        </div></div></div>
+        <footer class="option-foot"><span><i class="choice-dot"></i><b>Warm edge, calm surface</b></span><span>Gold border only</span></footer>
+      </article>
+
+      <article class="option" data-option="E">
+        <header class="option-head"><div><span class="option-id">OPTION E</span><h2>Charcoal capsule</h2><p>Reference-inspired dark control with white labels</p></div><button class="choose" type="button">Choose E</button></header>
+        <div class="sample"><div class="sample-label"><span>Bug Requests</span><span>Active work</span></div><div class="sample-ticket"><span class="ticket-no">TKT-2610-0042</span><span class="ticket-status">IN PROGRESS</span><span class="ticket-title">Search results page returns an error</span><span class="ticket-owner">Developer · You</span></div></div>
+        <div class="demo"><div class="demo-caption"><span>High-contrast capsule</span><span>Click to toggle</span></div><div class="stage"><div class="control-stack">
+          <button class="dark-trigger timer-toggle" type="button" aria-expanded="true"><span class="dark-ring"></span><span class="dark-time clock-value">13:12</span><span class="dark-live">LIVE</span></button>
+          <div class="dark-menu"><div class="frame-menu-head"><strong>Active work</strong><span class="clock-value">13:12</span></div>
+            <button class="dark-action choose-status" data-status="Pending" type="button"><span class="neutral-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14M16 5v14"/></svg></span>Move to pending<small>Pause</small></button>
+            <button class="dark-action choose-status" data-status="On hold" type="button"><span class="neutral-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>Put on hold<small>Pause</small></button>
+            <button class="dark-action choose-status" data-status="Testing" type="button"><span class="neutral-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6m-5 0v7l-5.5 9a1.3 1.3 0 0 0 1.1 2h12.8a1.3 1.3 0 0 0 1.1-2L14 10V3"/></svg></span>Rectified - send to testing<small>Verify</small></button>
+          </div>
+        </div></div></div>
+        <footer class="option-foot"><span><i class="choice-dot"></i><b>Closest to the reference mood</b></span><span>White icons and type</span></footer>
+      </article>
+
+      <article class="option" data-option="F">
+        <header class="option-head"><div><span class="option-id">OPTION F</span><h2>Progress rail</h2><p>Gold edge marks the active ticket state</p></div><button class="choose" type="button">Choose F</button></header>
+        <div class="sample"><div class="sample-label"><span>Service Requests</span><span>Active work</span></div><div class="sample-ticket"><span class="ticket-no">TKT-2610-0058</span><span class="ticket-status">IN PROGRESS</span><span class="ticket-title">Create user access for finance team</span><span class="ticket-owner">Developer · You</span></div></div>
+        <div class="demo"><div class="demo-caption"><span>State-accent rail</span><span>Click to toggle</span></div><div class="stage"><div class="control-stack">
+          <button class="rail-trigger timer-toggle" type="button" aria-expanded="true"><span class="rail-ring"></span><span class="rail-time clock-value">13:12</span><span class="rail-state">IN PROGRESS</span></button>
+          <div class="rail-menu"><div class="rail-menu-head"><strong>Ticket actions</strong><span class="clock-value">13:12</span></div>
+            <button class="rail-action choose-status" data-status="Pending" type="button"><span class="neutral-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14M16 5v14"/></svg></span>Move to pending<small>Pause work</small></button>
+            <button class="rail-action choose-status" data-status="On hold" type="button"><span class="neutral-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>Put on hold<small>Pause work</small></button>
+            <button class="rail-action testing choose-status" data-status="Testing" type="button"><span class="neutral-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6m-5 0v7l-5.5 9a1.3 1.3 0 0 0 1.1 2h12.8a1.3 1.3 0 0 0 1.1-2L14 10V3"/></svg></span>Rectified - send to testing<small>Hand off</small></button>
+          </div>
+        </div></div></div>
+        <footer class="option-foot"><span><i class="choice-dot"></i><b>Quiet active-state marker</b></span><span>Most enterprise-like</span></footer>
+      </article>
+    </section>
+    <p class="mobile-hint">On smaller screens, scroll down to compare each concept. Timer samples advance while this page is open.</p>
+  </main>
+  <script>
+    let seconds = 13 * 60 + 12;
+    const displayTime = () => {
+      seconds += 1;
+      const value = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+      document.querySelectorAll(".clock-value").forEach((item) => { item.textContent = value; });
+    };
+    window.setInterval(displayTime, 1000);
+    document.querySelectorAll(".timer-toggle").forEach((button) => {
+      button.addEventListener("click", () => {
+        const stage = button.closest(".control-stack");
+        const menu = stage.querySelector(".island-panel,.light-menu,.split-menu,.frame-menu,.dark-menu,.rail-menu");
+        const opening = menu.hidden;
+        menu.hidden = !opening;
+        button.setAttribute("aria-expanded", String(opening));
+      });
+    });
+    document.querySelectorAll(".choose").forEach((button) => {
+      button.addEventListener("click", () => {
+        const option = button.closest(".option");
+        document.querySelectorAll(".option").forEach((item) => item.classList.toggle("chosen", item === option));
+        document.querySelector("#selectionState").innerHTML = `Selected: <b>Option ${option.dataset.option}</b>`;
+      });
+    });
+    document.querySelectorAll(".choose-status").forEach((button) => {
+      button.addEventListener("click", () => {
+        const choice = button.dataset.status;
+        const card = button.closest(".option");
+        card.querySelectorAll(".ticket-status").forEach((item) => {
+          item.textContent = choice === "Testing" ? "TESTING" : choice.toUpperCase();
+          item.style.background = choice === "Testing" ? "#edf7f2" : "#fff5e8";
+          item.style.borderColor = choice === "Testing" ? "#cfe7dc" : "#f4dfc3";
+          item.style.color = choice === "Testing" ? "#26745f" : "#a05c12";
+        });
+      });
+    });
+  </script>
+</body>
+</html>

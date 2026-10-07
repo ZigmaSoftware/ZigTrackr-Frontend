@@ -137,6 +137,7 @@ export interface SupportTicketRow {
   is_overdue: boolean;
   overdue_days: number;
   latest_update_at: string | null;
+  current_work_started_at: string | null;
   created_at: string;
   can_reassign: boolean;
   can_delete: boolean;
@@ -390,7 +391,15 @@ export interface PermissionCell {
 
 export interface PermissionMatrix {
   roles: { id: string; code: string; name: string; is_system: boolean }[];
-  modules: { module: string; permissions: PermissionCell[] }[];
+  modules: { module: string; permissions: PermissionCell[]; submodules: PermissionSubmodule[] }[];
+}
+
+export interface PermissionSubmodule {
+  key: string;
+  name: string;
+  permissions: string[];
+  protected_roles: string[];
+  access_permission?: string;
 }
 
 export interface ChartDatum {

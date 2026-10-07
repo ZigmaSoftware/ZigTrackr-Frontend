@@ -1,0 +1,170 @@
+.ticket-work-pill {
+  display: inline-flex;
+  width: 148px;
+  height: 36px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 9px;
+  border: 1px solid #cbd8f0;
+  border-radius: 8px;
+  background: #f4f7ff;
+  color: #24345a;
+  box-shadow: 0 2px 5px rgb(41 60 107 / 8%);
+  font-variant-numeric: tabular-nums;
+  transition: background-color 160ms, border-color 160ms, box-shadow 160ms, transform 160ms;
+}
+
+.ticket-work-pill:hover {
+  border-color: #aebde7;
+  background: #ebf0ff;
+  box-shadow: 0 3px 8px rgb(41 60 107 / 12%);
+}
+
+.ticket-work-pill:active { transform: scale(.98); }
+.ticket-work-pill:disabled { cursor: wait; opacity: .6; }
+.ticket-work-pill:focus-visible { outline: 2px solid #5865d9; outline-offset: 2px; }
+
+.ticket-work-ring {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(#5865d9 0 288deg, #dce4f4 288deg 360deg);
+}
+
+.ticket-work-ring > span {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #f4f7ff;
+}
+
+.ticket-work-ring-start {
+  background: #5865d9;
+  color: #fff;
+}
+
+.ticket-work-pill-text {
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.ticket-work-caret { width: 13px; height: 13px; flex: none; color: #687795; }
+
+.ticket-work-popover {
+  z-index: 50;
+  width: min(306px, calc(100vw - 24px));
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid #d5def1;
+  border-radius: 12px;
+  background: #f7f9fe;
+  color: #24314d;
+  box-shadow: 0 14px 34px rgb(41 60 107 / 18%);
+}
+
+.ticket-work-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #687795;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.ticket-work-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #16846a;
+}
+
+.ticket-work-live i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #36b37e;
+}
+
+.ticket-work-display {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 5px;
+}
+
+.ticket-work-display-ring {
+  display: grid;
+  width: 43px;
+  height: 43px;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(#5865d9 0 288deg, #dce4f4 288deg 360deg);
+}
+
+.ticket-work-display-ring > span {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #f7f9fe;
+}
+
+.ticket-work-display-time { display: flex; min-width: 0; flex-direction: column; }
+.ticket-work-display-time strong {
+  color: #1c2a48;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.ticket-work-display-time > span { margin-top: 3px; color: #687795; font-size: 11px; }
+.ticket-work-divider { height: 1px; background: #e2e8f4; }
+.ticket-work-menu-label { display: block; padding: 11px 7px 5px; color: #687795; font-size: 10px; font-weight: 700; }
+
+.ticket-work-menu-item {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 7px;
+  border-radius: 7px;
+  outline: none;
+  cursor: pointer;
+}
+
+.ticket-work-menu-item[data-highlighted] { background: #ebf0ff; }
+.ticket-work-menu-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+  border-radius: 8px;
+  background: #e8edff;
+  color: #4d5bc4;
+}
+.ticket-work-menu-icon svg { width: 15px; height: 15px; }
+.ticket-work-menu-title { display: block; color: #24314d; font-size: 12px; font-weight: 600; line-height: 1.3; }
+.ticket-work-menu-hint { display: block; margin-top: 2px; color: #687795; font-size: 10px; line-height: 1.3; }
+
+.dark .ticket-work-pill { border-color: #424d70; background: #20283d; color: #e5eafe; }
+.dark .ticket-work-pill:hover { border-color: #6273ad; background: #283451; }
+.dark .ticket-work-ring > span { background: #20283d; }
+.dark .ticket-work-popover { border-color: #424d70; background: #1b2234; color: #e5eafe; }
+.dark .ticket-work-popover-head,.dark .ticket-work-display-time > span,.dark .ticket-work-menu-label,.dark .ticket-work-menu-hint { color: #aab5d0; }
+.dark .ticket-work-display-ring > span { background: #1b2234; }
+.dark .ticket-work-display-time strong,.dark .ticket-work-menu-title { color: #f3f5fb; }
+.dark .ticket-work-divider { background: #343e57; }
+.dark .ticket-work-menu-item[data-highlighted] { background: #293552; }
+.dark .ticket-work-menu-icon { background: #303b5d; color: #b9c5ff; }

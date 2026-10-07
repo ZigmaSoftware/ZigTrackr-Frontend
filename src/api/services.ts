@@ -179,6 +179,8 @@ export const roleApi = {
   matrix: () => get<PermissionMatrix>("/permissions/matrix/"),
   updatePermissions: (id: string, permissions: string[]) =>
     api.put("/roles/" + id + "/permissions/", { permissions }).then((r) => r.data.data as PermissionMatrix),
+  updateSubmodulePermissions: (id: string, submodule_changes: { key: string; enabled: boolean }[]) =>
+    api.put(`/roles/${id}/permissions/`, { submodule_changes }).then((r) => r.data.data as PermissionMatrix),
 };
 
 /* ---- DASHBOARD ---- */

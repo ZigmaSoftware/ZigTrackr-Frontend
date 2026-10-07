@@ -19,6 +19,8 @@ export const queryKeys = {
 
   tickets: {
     all: ["tickets"] as const,
+    dailyUpdates: (params: Record<string, unknown>) => ["tickets", "daily-updates", params] as const,
+    dailyCalendar: (month: string) => ["tickets", "daily-calendar", month] as const,
     chatInbox: (filter: string, search: string) => ["tickets", "chat-inbox", filter, search] as const,
     list: (params: Record<string, unknown>) => ["tickets", "list", params] as const,
     detail: (id: string) => ["tickets", "detail", id] as const,
