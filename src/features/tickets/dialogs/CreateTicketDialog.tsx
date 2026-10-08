@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import { RotateCcw, Save, X } from "lucide-react";
@@ -36,7 +35,6 @@ export interface CreateTicketDialogProps {
 }
 
 export function CreateTicketDialog({ open, onOpenChange }: CreateTicketDialogProps) {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [confirmExit, setConfirmExit] = useState(false);
@@ -91,7 +89,6 @@ export function CreateTicketDialog({ open, onOpenChange }: CreateTicketDialogPro
           : `${ticket.reference} created`,
       );
       close();
-      navigate(`/tickets/detail/${ticket.id}`);
     },
     onError: (error) => toast.error(apiErrorMessage(error, "Unable to create ticket.")),
   });
@@ -179,7 +176,6 @@ export function CreateTicketDialog({ open, onOpenChange }: CreateTicketDialogPro
                       className={cn(!draft.source && "text-[var(--muted-foreground)]")}
                     >
                       <option value="" disabled>Select…</option>
-                      <option value="MANUAL">Manual</option>
                       <option value="EMAIL">Email</option>
                       <option value="WHATSAPP">WhatsApp</option>
                       <option value="IN_PERSON">In Person</option>
