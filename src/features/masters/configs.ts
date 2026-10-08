@@ -16,6 +16,7 @@ export const MASTER_CONFIGS: Record<string, MasterConfig> = {
   modules: {
     resource: "modules", title: "Modules", singular: "Module",
     description: "Functional areas within a project.",
+    parentResource: "projects", parentLabel: "Project",
     fields: [
       { name: "project", label: "Project", type: "select", required: true },
       NAME_FIELD, { name: "code", label: "Code" }, DESCRIPTION_FIELD,
@@ -24,6 +25,7 @@ export const MASTER_CONFIGS: Record<string, MasterConfig> = {
   submodules: {
     resource: "submodules", title: "Submodules", singular: "Submodule",
     description: "Screens or features within a module.",
+    parentResource: "modules", parentLabel: "Module",
     fields: [
       { name: "module", label: "Module", type: "select", required: true },
       NAME_FIELD, { name: "code", label: "Code" }, DESCRIPTION_FIELD,
@@ -37,7 +39,7 @@ export const MASTER_CONFIGS: Record<string, MasterConfig> = {
       { name: "rank", label: "Rank", type: "number",
         help: "Lower sorts first — Critical should be the lowest number." },
       { name: "color", label: "Badge colour", type: "color" },
-      { name: "sla_days", label: "SLA days", type: "number",
+      { name: "sla_days", label: "SLA days", type: "number", nullable: true,
         help: "Added to the reported date to suggest an expected closure." },
       DESCRIPTION_FIELD,
     ],

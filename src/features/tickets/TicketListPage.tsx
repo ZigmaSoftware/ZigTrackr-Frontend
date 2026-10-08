@@ -4,8 +4,8 @@ import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
-  AlertOctagon, AlertTriangle, Archive, ChevronDown, FlaskConical, Inbox, Pause,
-  Play, PlayCircle, KeyRound, LifeBuoy, ListFilter, ClipboardList, Trash2,
+  AlertOctagon, AlertTriangle, Archive, CheckCircle2, ChevronDown, FlaskConical, Inbox, Pause,
+  Play, PlayCircle, KeyRound, LifeBuoy, ListFilter, ClipboardList, RotateCcw, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ticketApi } from "@/api/services";
@@ -25,6 +25,7 @@ import type { SupportTicketRow } from "@/types";
 import { PriorityBadge } from "@/components/common/badges";
 import { ReviewAssignDialog } from "@/features/tickets/dialogs/ReviewAssignDialog";
 import { DescriptionPreview, RequestPreview, TicketStatusBadge } from "@/features/tickets/TicketTableCells";
+import type { TicketWorkAction as WorkAction } from "@/features/tickets/dialogs/TicketDetailDialog";
 import "./TicketWorkControl.css";
 
 const TicketDetailDialog = lazy(() => import("@/features/tickets/dialogs/TicketDetailDialog")
@@ -184,8 +185,6 @@ function AgeCell({ days }: { days: number }) {
   return <span className={cn("text-[12px] tabular-nums", tone)}>{days}d</span>;
 }
 
-type WorkAction = "pending" | "hold" | "rectify";
-
 function elapsedWorkTime(startedAt: string | null, now: number) {
   if (!startedAt) return "Active";
   const start = new Date(startedAt).getTime();
@@ -199,17 +198,18 @@ function elapsedWorkTime(startedAt: string | null, now: number) {
 }
 
 function TicketWorkControl({
-  row, now, presetKey, starting, onStart, onAction, onOpen,
+  row, now, presetKey, starting, canVerify, canRetake, onStart, onAction, onOpen,
 }: {
   row: SupportTicketRow;
   now: number;
   presetKey: TicketPreset;
   starting: boolean;
+  canVerify: boolean;
+  canRetake: boolean;
   onStart: () => void;
   onAction: (action: WorkAction) => void;
   onOpen: () => void;
 }) {
-  const [confirmingAction, setConfirmingAction] = useState<WorkAction | null>(null);
   const status = row.effective_status || row.status;
   const canStart = row.allowed_actions.includes("IN_PROGRESS");
   const workActions: { kind: WorkAction; label: string; hint: string; icon: ReactNode }[] = status === "IN_PROGRESS"
@@ -238,14 +238,7 @@ function TicketWorkControl({
         </button>
       );
     }
-    const confirmation = confirmingAction === "pending"
-      ? { title: "Move ticket to Pending?", description: "This pauses the work timer. You can resume work when the ticket is ready.", confirm: "Continue to pending" }
-      : confirmingAction === "hold"
-        ? { title: "Put ticket On Hold?", description: "This pauses the work timer while development is on hold.", confirm: "Put on hold" }
-        : { title: "Send ticket to Testing?", description: "This hands the corrected ticket to the testing team for verification.", confirm: "Send to testing" };
-
     return (
-      <>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button type="button" onClick={(event) => event.stopPropagation()}
@@ -280,7 +273,7 @@ function TicketWorkControl({
               </DropdownMenu.Item>
             ) : null}
             {availableActions.map((action) => (
-              <DropdownMenu.Item key={action.kind} onSelect={() => setConfirmingAction(action.kind)}
+              <DropdownMenu.Item key={action.kind} onSelect={() => onAction(action.kind)}
                 className="ticket-work-menu-item">
                 <span className="ticket-work-menu-icon">{action.icon}</span>
                 <span><span className="ticket-work-menu-title">{action.label}</span><span className="ticket-work-menu-hint">{action.hint}</span></span>
@@ -289,19 +282,6 @@ function TicketWorkControl({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
-      <ConfirmDialog
-        open={confirmingAction !== null}
-        onOpenChange={(open) => { if (!open) setConfirmingAction(null); }}
-        title={confirmation.title}
-        description={confirmation.description}
-        confirmLabel={confirmation.confirm}
-        onConfirm={() => {
-          const action = confirmingAction;
-          setConfirmingAction(null);
-          if (action) onAction(action);
-        }}
-      />
-      </>
     );
   }
 
@@ -316,12 +296,44 @@ function TicketWorkControl({
     );
   }
 
-  const label = status === "TESTING" ? (presetKey === "testing" ? "Verify" : "Review fix")
+  if (["TESTING", "REOPENED"].includes(status) && presetKey === "testing" && canVerify) {
+    return (
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button type="button" className="ticket-work-pill"
+            aria-label={`Verification actions for ${row.reference}`}>
+            <span className="ticket-work-ring ticket-work-ring-start" aria-hidden="true"><FlaskConical className="size-3.5" /></span>
+            <span className="ticket-work-pill-text">{status === "REOPENED" ? "Review reopen" : "Verify"}</span>
+            <ChevronDown className="ticket-work-caret" aria-hidden="true" />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content align="end" sideOffset={8} collisionPadding={12} className="ticket-work-popover">
+            <DropdownMenu.Label className="ticket-work-menu-label">VERIFICATION</DropdownMenu.Label>
+            <DropdownMenu.Item onSelect={() => onAction("return")} className="ticket-work-menu-item">
+              <span className="ticket-work-menu-icon"><RotateCcw /></span>
+              <span><span className="ticket-work-menu-title">Send back to developer</span><span className="ticket-work-menu-hint">Describe what needs another fix</span></span>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item onSelect={() => onAction("close")} className="ticket-work-menu-item">
+              <span className="ticket-work-menu-icon"><CheckCircle2 /></span>
+              <span><span className="ticket-work-menu-title">Verified - close ticket</span><span className="ticket-work-menu-hint">Record the verification and close</span></span>
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+    );
+  }
+
+  const label = status === "TESTING" ? "Under Review"
     : status === "REOPENED" ? (presetKey === "testing" ? "Review reopen" : "View")
       : ["CLOSED", "REJECTED"].includes(status) ? "View" : "Open";
   if (status === "TESTING" || (status === "REOPENED" && presetKey === "testing")) {
     return <button type="button" className="ticket-work-pill" title={`${label} ${row.reference}`}
-      onClick={(event) => { event.stopPropagation(); onOpen(); }}>
+      onClick={(event) => {
+        event.stopPropagation();
+        if (status === "TESTING" && canRetake) onAction("retake");
+        else onOpen();
+      }}>
       <span className="ticket-work-ring ticket-work-ring-start" aria-hidden="true"><FlaskConical className="size-3.5" /></span>
       <span className="ticket-work-pill-text">{label}</span>
     </button>;
@@ -339,6 +351,7 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
   const isUnassigned = presetKey === "unassigned";
   const [reviewTicketId, setReviewTicketId] = useState<string | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<SupportTicketRow | null>(null);
+  const [ticketToStart, setTicketToStart] = useState<SupportTicketRow | null>(null);
   const canDelete = can("tickets.ticket.delete");
   // Seeded from ?ticket= so an old /tickets/detail/:id link opens the dialog.
   const [detailTicketId, setDetailTicketId] = useState<string | null>(
@@ -371,15 +384,17 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
   });
   const startWork = useMutation({
     mutationFn: (row: SupportTicketRow) => ticketApi.workTransition(row.id, { to_status: "IN_PROGRESS" }),
-    onSuccess: async () => {
+    onSuccess: async (_ticket, row) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all });
-      toast.success("Work started");
+      setTicketToStart(null);
+      toast.success(["PENDING", "ON_HOLD"].includes(row.effective_status || row.status) ? "Work resumed" : "Work started");
     },
     onError: (error) => toast.error(apiErrorMessage(error, "Unable to start work.")),
   });
-  const startWorkMutate = startWork.mutate;
   const startWorkIsPending = startWork.isPending;
   const startingTicketId = startWork.variables?.id;
+  const resumingWork = ticketToStart !== null
+    && ["PENDING", "ON_HOLD"].includes(ticketToStart.effective_status || ticketToStart.status);
 
   function openTicket(id: string, action: WorkAction | null = null) {
     setRequestedAction(action);
@@ -615,17 +630,26 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
       header: "",
       align: "right",
       width: "w-40",
-      cell: (row) => <TicketWorkControl
-        row={row}
-        now={now}
-        presetKey={presetKey}
-        starting={startWorkIsPending && startingTicketId === row.id}
-        onStart={() => startWorkMutate(row)}
-        onAction={(action) => openTicket(row.id, action)}
-        onOpen={() => openTicket(row.id)}
-      />,
+      // Portal clicks still bubble through React to the table row. Keep menu
+      // and confirmation clicks from opening the ticket details as well.
+      cell: (row) => (
+        <div className="flex justify-end" onClick={(event) => event.stopPropagation()}>
+          <TicketWorkControl
+            row={row}
+            now={now}
+            presetKey={presetKey}
+            starting={startWorkIsPending && startingTicketId === row.id}
+            canVerify={can("tickets.ticket.verify_close") && can("tickets.ticket.add_update")}
+            canRetake={isDeveloper && row.owner?.id === user?.id && !row.needs_review
+              && row.allowed_actions.includes("IN_PROGRESS") && can("tickets.ticket.add_update")}
+            onStart={() => setTicketToStart(row)}
+            onAction={(action) => openTicket(row.id, action)}
+            onOpen={() => openTicket(row.id)}
+          />
+        </div>
+      ),
     },
-  ], [presetKey, isDeveloper, user?.id, now, startWorkIsPending, startingTicketId, startWorkMutate]);
+  ], [presetKey, isDeveloper, user?.id, can, now, startWorkIsPending, startingTicketId]);
 
   return (
     <>
@@ -777,6 +801,16 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
           ticket={(data?.results ?? []).find((row) => row.id === reviewTicketId) ?? null}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={ticketToStart !== null}
+        onOpenChange={(open) => { if (!open && !startWork.isPending) setTicketToStart(null); }}
+        title={resumingWork ? "Resume work on this ticket?" : "Start work on this ticket?"}
+        description={`${ticketToStart?.reference ?? "This ticket"}${ticketToStart ? ` · ${ticketToStart.title}` : ""} will move to In Progress and ${resumingWork ? "resume" : "start"} the work timer.`}
+        confirmLabel={resumingWork ? "Resume work" : "Start work"}
+        loading={startWork.isPending}
+        onConfirm={() => { if (ticketToStart && !startWork.isPending) startWork.mutate(ticketToStart); }}
+      />
 
       <ConfirmDialog
         open={ticketToDelete !== null}

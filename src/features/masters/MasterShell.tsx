@@ -6,6 +6,7 @@ import { masterApi } from "@/api/services";
 import { queryKeys } from "@/api/queryKeys";
 import { apiErrorMessage, apiFieldErrors } from "@/api/client";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useMasterOptions } from "@/hooks/useMasters";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/tables/DataTable";
 import { Button, Card, IconButton, Input, Label, Select, Textarea } from "@/components/ui/primitives";
@@ -22,9 +23,11 @@ export interface MasterField {
   label: string;
   type?: "text" | "textarea" | "number" | "color" | "select";
   required?: boolean;
+  /** An empty numeric input explicitly clears a nullable database field. */
+  nullable?: boolean;
   placeholder?: string;
   help?: string;
-  /** For select fields: a hook returning options. */
+  /** Static options; otherwise the config's parent resource supplies them. */
   options?: { value: string; label: string }[];
   /** Locked once the row exists and is a seeded system row. */
   lockedOnSystem?: boolean;
@@ -50,9 +53,19 @@ export function MasterShell({ config }: { config: MasterConfig }) {
   const [deleting, setDeleting] = useState<MasterRow | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const isOpen = creating || Boolean(editing);
+  const parentOptions = useMasterOptions(
+    config.parentResource ?? "",
+    editing ? { include_inactive: true } : undefined,
+    isOpen && Boolean(config.parentResource),
+  );
+  const parentRows = (parentOptions.data ?? []).filter((row) => editing || row.is_active);
+  const parentUnavailable = Boolean(config.parentResource) && (
+    parentOptions.isLoading || parentOptions.isError || parentRows.length === 0
+  );
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: queryKeys.masters.list(config.resource),
+    queryKey: queryKeys.masters.list(config.resource, { include_inactive: true }),
     queryFn: () => masterApi.list(config.resource, { include_inactive: true }),
   });
 
@@ -87,7 +100,9 @@ export function MasterShell({ config }: { config: MasterConfig }) {
     if (row) {
       setEditing(row);
       setValues(
-        Object.fromEntries(config.fields.map((f) => [f.name, String(row[f.name] ?? "")])),
+        Object.fromEntries(config.fields.map((f) => [
+          f.name, String(row[f.name] ?? row[`${f.name}_id`] ?? ""),
+        ])),
       );
     } else {
       setCreating(true);
@@ -168,8 +183,6 @@ export function MasterShell({ config }: { config: MasterConfig }) {
     ];
   }, [config, can]);
 
-  const isOpen = creating || Boolean(editing);
-
   return (
     <>
       <PageHeader
@@ -209,6 +222,7 @@ export function MasterShell({ config }: { config: MasterConfig }) {
             <Button variant="outline" onClick={close}>Cancel</Button>
             <Button
               loading={save.isPending}
+              disabled={parentUnavailable}
               onClick={() => {
                 const payload: Record<string, unknown> = {};
                 const nextErrors: Record<string, string> = {};
@@ -217,6 +231,7 @@ export function MasterShell({ config }: { config: MasterConfig }) {
                   if (field.required && !value.trim()) {
                     nextErrors[field.name] = `${field.label} is required.`;
                   }
+                  if (field.type === "number" && value === "" && !field.nullable) continue;
                   payload[field.name] = field.type === "number"
                     ? (value === "" ? null : Number(value))
                     : value;
@@ -233,6 +248,13 @@ export function MasterShell({ config }: { config: MasterConfig }) {
         <div className="space-y-3.5">
           {config.fields.map((field) => {
             const locked = Boolean(field.lockedOnSystem && editing?.is_system);
+            const usesParent = field.type === "select" && !field.options && Boolean(config.parentResource);
+            const options = field.options ?? parentRows.map((row) => ({ value: row.id, label: row.name }));
+            const parentMessage = usesParent && parentOptions.isError
+              ? `Unable to load ${config.parentResource}. Please retry.`
+              : usesParent && !parentOptions.isLoading && options.length === 0
+                ? `Create an active ${config.parentLabel?.toLowerCase()} in Masters → ${config.parentLabel}s first.`
+                : undefined;
             return (
               <div key={field.name} className="space-y-1.5">
                 <Label htmlFor={`m-${field.name}`} required={field.required}>{field.label}</Label>
@@ -244,12 +266,19 @@ export function MasterShell({ config }: { config: MasterConfig }) {
                   />
                 ) : field.type === "select" ? (
                   <Select
-                    id={`m-${field.name}`} disabled={locked}
+                    id={`m-${field.name}`} disabled={locked || (usesParent && parentUnavailable)}
+                    aria-busy={usesParent && parentOptions.isLoading}
+                    aria-invalid={Boolean(errors[field.name])}
+                    aria-describedby={parentMessage ? `m-${field.name}-parent-status` : undefined}
                     value={values[field.name] ?? ""}
                     onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
                   >
-                    <option value="">Select…</option>
-                    {(field.options ?? []).map((o) => (
+                    <option value="">
+                      {usesParent && parentOptions.isLoading
+                        ? `Loading ${config.parentResource}…`
+                        : parentMessage ? `No ${config.parentResource} available` : "Select…"}
+                    </option>
+                    {options.map((o) => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </Select>
@@ -263,6 +292,16 @@ export function MasterShell({ config }: { config: MasterConfig }) {
                     onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
                   />
                 )}
+                {parentMessage ? (
+                  <div id={`m-${field.name}-parent-status`} role={parentOptions.isError ? "alert" : "status"}>
+                    <p className="text-[12px] text-[var(--muted-foreground)]">{parentMessage}</p>
+                    {parentOptions.isError ? (
+                      <Button type="button" variant="link" size="sm" onClick={() => void parentOptions.refetch()}>
+                        Retry
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
                 {locked ? (
                   <p className="text-[11px] text-[var(--muted-foreground)]">
                     Locked: reports and dashboards reference this code.

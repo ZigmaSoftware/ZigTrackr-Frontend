@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Tabs from "@radix-ui/react-tabs";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
-  Bot, CheckCircle2, ChevronDown, CircleAlert, FileText, FlaskConical, GitCommit,
-  Image as ImageIcon, MessageSquare, MessageSquarePlus, Paperclip, PauseCircle, PlayCircle,
+  Bot, CircleAlert, FileText, FlaskConical, GitCommit,
+  Image as ImageIcon, MessageSquare, MessageSquarePlus, Paperclip, PlayCircle,
   RotateCcw, ShieldCheck, UserCheck, UserRoundCheck, X, XCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -13,7 +12,7 @@ import { toast } from "sonner";
 import { bugApi, ticketApi } from "@/api/services";
 import { apiErrorMessage } from "@/api/client";
 import { queryKeys } from "@/api/queryKeys";
-import { ConfirmDialog, Modal } from "@/components/feedback/Modal";
+import { Modal } from "@/components/feedback/Modal";
 import {
   Button, IconButton, Input, Label, Select, Skeleton, Textarea,
 } from "@/components/ui/primitives";
@@ -34,15 +33,15 @@ function pretty(value: string | null | undefined) {
   return value ? value.replaceAll("_", " ") : "-";
 }
 
-type StatusAction = "start" | "retake" | "return" | "pending" | "hold" | "rectify" | "close" | "approve" | "reject";
+export type TicketWorkAction = "pending" | "hold" | "rectify" | "retake" | "return" | "close";
+type StatusAction = TicketWorkAction | "approve" | "reject";
 type DialogKind = StatusAction | "assign" | "update";
 
 /* The work-flow moves map onto one endpoint; approve and reject remain their
    own actions because they are access-request decisions, not work states. */
 const WORK_TARGET: Partial<Record<DialogKind, string>> = {
-  start: "IN_PROGRESS",
   retake: "IN_PROGRESS",
-  return: "IN_PROGRESS",
+  return: "ASSIGNED",
   pending: "PENDING",
   hold: "ON_HOLD",
   rectify: "TESTING",
@@ -54,31 +53,11 @@ export interface TicketDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   ticketId: string | null;
   showVerifyClose: boolean;
-  initialAction?: "pending" | "hold" | "rectify" | null;
+  initialAction?: TicketWorkAction | null;
 }
-
-const WORK_ACTION_CONFIRMATION = {
-  pending: {
-    title: "Move ticket to Pending?",
-    description: "This pauses the work timer. You can resume work when the ticket is ready.",
-    confirmLabel: "Continue to pending",
-  },
-  hold: {
-    title: "Put ticket On Hold?",
-    description: "This pauses the work timer while development is on hold.",
-    confirmLabel: "Put on hold",
-  },
-  rectify: {
-    title: "Send ticket to Testing?",
-    description: "This hands the corrected ticket to the testing team for verification.",
-    confirmLabel: "Send to testing",
-  },
-} as const;
 
 export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClose, initialAction }: TicketDetailDialogProps) {
   const [action, setAction] = useState<DialogKind | null>(initialAction ?? null);
-  const [confirmAction, setConfirmAction] = useState<keyof typeof WORK_ACTION_CONFIRMATION | null>(null);
-  const actionOnly = initialAction != null || action === "pending" || action === "hold" || action === "rectify";
 
   const { data: ticket, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.tickets.detail(ticketId ?? ""),
@@ -92,7 +71,7 @@ export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClo
 
   return (
     <>
-      <Dialog.Root open={open && !actionOnly && confirmAction === null} onOpenChange={onOpenChange}>
+      <Dialog.Root open={open && (action === null || !ticket)} onOpenChange={onOpenChange}>
         <Dialog.Portal>
           <Dialog.Overlay
             className="fixed inset-0 z-[60] bg-black/55 backdrop-blur-[2px]
@@ -113,16 +92,13 @@ export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClo
                 ticket={ticket}
                 onClose={() => onOpenChange(false)}
                 onAction={setAction}
-                onRequestConfirmation={setConfirmAction}
-                showVerifyClose={showVerifyClose}
               />
             )}
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
 
-      {/* Mounted outside the detail dialog's tree: Radix portals both, and a
-          nested action dialog must be able to close without closing its parent. */}
+      {/* Show the action form by itself; Cancel returns to ticket details. */}
       {ticket ? (
         <TicketActionDialog
           open={open && action !== null}
@@ -134,20 +110,6 @@ export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClo
             if (initialAction) onOpenChange(false);
           }}
           onStatusChanged={showVerifyClose ? () => onOpenChange(false) : undefined}
-        />
-      ) : null}
-
-      {confirmAction ? (
-        <ConfirmDialog
-          open
-          onOpenChange={(next) => { if (!next) setConfirmAction(null); }}
-          title={WORK_ACTION_CONFIRMATION[confirmAction].title}
-          description={WORK_ACTION_CONFIRMATION[confirmAction].description}
-          confirmLabel={WORK_ACTION_CONFIRMATION[confirmAction].confirmLabel}
-          onConfirm={() => {
-            setAction(confirmAction);
-            setConfirmAction(null);
-          }}
         />
       ) : null}
     </>
@@ -179,13 +141,11 @@ function LoadingShell({
 /* ---- HEADER + TABS ---- */
 
 function TicketDetailBody({
-  ticket, onClose, onAction, onRequestConfirmation, showVerifyClose,
+  ticket, onClose, onAction,
 }: {
   ticket: SupportTicketDetail;
   onClose: () => void;
   onAction: (kind: DialogKind) => void;
-  onRequestConfirmation: (kind: keyof typeof WORK_ACTION_CONFIRMATION) => void;
-  showVerifyClose: boolean;
 }) {
   const { user, can, hasRole } = useAuth();
   const [tab, setTab] = useState("timeline");
@@ -205,39 +165,13 @@ function TicketDetailBody({
       ? can("bugs.update.add")
       : ticket.ticket_type !== "BUG" && can("tickets.ticket.add_update")
   );
-  const canWork = !ticket.needs_review && (isOwner || canManage) && can("tickets.ticket.add_update");
-
-  /* The shared work flow, mirroring WORK_TRANSITIONS on the server: Start puts
-     the ticket In Progress, from there it is parked or handed to a tester, and
-     only someone who may close bugs closes it. The menu offers exactly the
-     moves the API would accept, so it cannot present one that then fails. */
+  // Work and verification actions are controlled from the table's Actions column.
+  // Access approval remains available in ticket details.
   const statusActions = useMemo(() => {
     const options: { kind: StatusAction; label: string; hint: string; icon: React.ReactNode }[] = [];
     const status = ticket.effective_status || ticket.status;
     const isAccess = ticket.ticket_type === "ACCESS_REQUEST";
 
-    if (canWork && ticket.owner) {
-      if (["NEW", "CONFIRMED", "ASSIGNED", "APPROVED"].includes(status)) {
-        options.push({ kind: "start", label: "Start work", hint: "Mark this ticket in progress", icon: <PlayCircle /> });
-      }
-      if (status === "IN_PROGRESS") {
-        options.push({ kind: "pending", label: "Move to pending", hint: "Pause while awaiting information", icon: <PauseCircle /> });
-        options.push({ kind: "hold", label: "Put on hold", hint: "Pause development work", icon: <PauseCircle /> });
-        options.push({ kind: "rectify", label: "Rectified - send to testing", hint: "Hand over for verification", icon: <FlaskConical /> });
-      }
-      if (status === "ON_HOLD" || status === "PENDING") {
-        options.push({ kind: "start", label: "Resume work", hint: "Continue development", icon: <PlayCircle /> });
-        options.push({ kind: "rectify", label: "Rectified - send to testing", hint: "Hand over for verification", icon: <FlaskConical /> });
-      }
-    }
-    if (status === "TESTING" || status === "REOPENED") {
-      if (showVerifyClose && can("tickets.ticket.verify_close")) {
-        options.push({ kind: "return", label: "Send back to developer", hint: "Return for another fix", icon: <RotateCcw /> });
-        options.push({ kind: "close", label: "Verified - close ticket", hint: "Complete verification", icon: <CheckCircle2 /> });
-      } else if (status === "TESTING" && !showVerifyClose && isOwner && hasRole("DEVELOPER") && canWork) {
-        options.push({ kind: "retake", label: "Retake", hint: "Resume development before verification", icon: <RotateCcw /> });
-      }
-    }
     if (can("access.request.approve") && isAccess && status === "PENDING_APPROVAL"
         && ticket.reported_by?.id !== user?.id
         && ticket.reported_by_email?.toLowerCase() !== user?.email?.toLowerCase()) {
@@ -248,7 +182,7 @@ function TicketDetailBody({
       options.push({ kind: "reject", label: "Reject request", hint: "Decline this access request", icon: <XCircle /> });
     }
     return options;
-  }, [ticket, canWork, can, hasRole, isOwner, user, showVerifyClose]);
+  }, [ticket, can, user]);
 
   return (
     <>
@@ -285,69 +219,21 @@ function TicketDetailBody({
 
       <RequestConversation messages={ticket.request_messages} onAttachments={() => setTab("attachments")} />
 
+      {canAssign || statusActions.length > 0 ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] px-5 py-3">
           {canAssign ? (
             <Button size="sm" variant="outline" onClick={() => onAction("assign")}>
               <UserRoundCheck /> Assign
             </Button>
           ) : null}
-          {statusActions.length > 0 ? (
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger asChild>
-                <Button size="sm" variant="outline" className="ml-auto gap-2 border-[var(--border)] bg-[var(--card)] shadow-sm">
-                  <GitCommit className="size-4 text-[var(--primary)]" /> Change status <ChevronDown className="size-3.5 text-[var(--muted-foreground)]" />
-                </Button>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content
-                  align="end"
-                  sideOffset={6}
-                  /* Above the dialog: this portals to <body>, so at z-50 it
-                     rendered behind the z-[60] dialog and looked like a dead
-                     button. */
-                  className="z-[70] w-[min(19rem,calc(100vw-2rem))] rounded-lg border border-[var(--border)]
-                             bg-[var(--popover)] p-1.5 shadow-[var(--shadow-pop)]"
-                >
-                  <DropdownMenu.Label className="px-2.5 pb-2 pt-1.5">
-                    <span className="block text-[12px] font-semibold text-[var(--foreground)]">Change status</span>
-                    <span className="block text-[11px] text-[var(--muted-foreground)]">Current: {pretty(ticket.effective_status || ticket.status)}</span>
-                  </DropdownMenu.Label>
-                  <DropdownMenu.Separator className="mb-1 h-px bg-[var(--border)]" />
-                  {statusActions.map((option) => (
-                    <DropdownMenu.Item
-                      key={option.kind}
-                      disabled={Boolean(ticket.active_work_conflict && ["start", "retake", "return"].includes(option.kind))}
-                      onSelect={() => {
-                        if (option.kind === "pending" || option.kind === "hold" || option.kind === "rectify") {
-                          onRequestConfirmation(option.kind);
-                        } else {
-                          onAction(option.kind);
-                        }
-                      }}
-                      className="flex cursor-pointer items-center gap-3 rounded-md px-2.5 py-2
-                                 outline-none transition-colors data-[highlighted]:bg-[var(--muted)]
-                                 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-45"
-                    >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--muted)] text-[var(--primary)] [&_svg]:size-4">
-                        {option.icon}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[12px] font-semibold leading-4 text-[var(--foreground)]">{option.label}</span>
-                        <span className="block text-[11px] leading-4 text-[var(--muted-foreground)]">{option.hint}</span>
-                      </span>
-                    </DropdownMenu.Item>
-                  ))}
-                  {ticket.active_work_conflict && statusActions.some((option) => ["start", "retake", "return"].includes(option.kind)) ? (
-                    <div className="mt-1 flex gap-2 border-t border-[var(--border)] px-2.5 py-2 text-[11px] leading-4 text-amber-700 dark:text-amber-300">
-                      <CircleAlert className="mt-0.5 size-3.5 shrink-0" />
-                      Finish or pause {ticket.active_work_conflict.reference} first.
-                    </div>
-                  ) : null}
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
-          ) : null}
+          {statusActions.map((option) => (
+            <Button key={option.kind} size="sm" variant="outline" title={option.hint}
+              onClick={() => onAction(option.kind)}>
+              {option.icon} {option.label}
+            </Button>
+          ))}
         </div>
+      ) : null}
 
       <Tabs.Root value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
         <Tabs.List className="flex shrink-0 gap-1 overflow-x-auto border-b border-[var(--border)] px-5">
@@ -660,9 +546,8 @@ function AttachmentsTab({ ticket }: { ticket: SupportTicketDetail }) {
 const ACTION_META: Record<DialogKind, { title: string; label: string; hint?: string }> = {
   assign: { title: "Assign request", label: "Save" },
   update: { title: "Add update", label: "Add update" },
-  start: { title: "Start work", label: "Start work", hint: "Says what you are picking up." },
-  retake: { title: "Retake ticket", label: "Retake", hint: "Describe what still needs correction." },
-  return: { title: "Send back to developer", label: "Send back", hint: "Describe what did not pass verification." },
+  retake: { title: "Retake ticket", label: "Retake", hint: "Explain why this ticket needs more work before verification." },
+  return: { title: "Send back to developer", label: "Send back", hint: "Describe what did not pass verification. The developer will start work when ready." },
   pending: { title: "Move to pending", label: "Move to pending", hint: "Explain what is still needed." },
   hold: { title: "Put on hold", label: "Put on hold", hint: "Say what it is waiting on." },
   rectify: {
@@ -699,6 +584,10 @@ function TicketActionDialog({
   const [remarks, setRemarks] = useState("");
   const [rootCause, setRootCause] = useState("");
   const [resolution, setResolution] = useState("");
+  const currentStatus = ticket.effective_status || ticket.status;
+  const reviewFinished = (kind === "retake" && currentStatus !== "TESTING")
+    || ((kind === "return" || kind === "close") && !["TESTING", "REOPENED"].includes(currentStatus));
+  const workConflict = kind === "retake" ? ticket.active_work_conflict : null;
 
   useEffect(() => {
     if (open) {
@@ -754,6 +643,7 @@ function TicketActionDialog({
   });
 
   function submit() {
+    if (reviewFinished || workConflict) return;
     if (kind === "assign" && !owner) {
       toast.error("Choose who will work on this.");
       return;
@@ -790,11 +680,24 @@ function TicketActionDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
             Cancel
           </Button>
-          <Button onClick={submit} loading={mutation.isPending}>{meta.label}</Button>
+          <Button onClick={submit} loading={mutation.isPending} disabled={reviewFinished || Boolean(workConflict)}>{meta.label}</Button>
         </>
       }
     >
       <div className="space-y-3.5">
+        {reviewFinished || workConflict ? (
+          <p role="alert" className="flex items-start gap-2 text-[12px] text-amber-700 dark:text-amber-300">
+            <CircleAlert className="mt-0.5 size-3.5 shrink-0" />
+            {workConflict
+              ? `Finish or pause ${workConflict.reference} first.`
+              : "This ticket is no longer awaiting verification. Close this form and refresh the list."}
+          </p>
+        ) : null}
+        {kind === "retake" ? (
+          <p className="text-[13px] text-[var(--muted-foreground)]">
+            Retaking moves this ticket back to In Progress and starts the work timer.
+          </p>
+        ) : null}
         {kind === "assign" ? (
           <div className="space-y-1.5">
             <Label htmlFor="action_owner" required>Assigned to</Label>
@@ -836,7 +739,7 @@ function TicketActionDialog({
 
         {!(kind === "rectify" && ticket.bug_id) ? <div className="space-y-1.5">
           <Label htmlFor="action_remarks" required={REMARKS_REQUIRED.includes(kind)}>
-            {kind === "reject" ? "Reason" : "Remarks"}
+            {kind === "reject" ? "Reason" : kind === "retake" ? "Remark" : "Remarks"}
           </Label>
           <Textarea
             id="action_remarks"
