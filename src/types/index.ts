@@ -141,9 +141,19 @@ export interface SupportTicketRow {
   created_at: string;
   can_reassign: boolean;
   can_delete: boolean;
+  email_attachment_count?: number;
   reassign_block_reason: string | null;
   allowed_actions: string[];
   chat_state: { can_view: boolean; can_send: boolean; reason: string | null };
+}
+
+export type TicketRemovalPayload =
+  | { disposition: "NOT_A_TICKET" }
+  | { disposition: "DELETE"; reason: string };
+
+export interface TicketRemovalResult {
+  disposition: "NOT_A_TICKET" | "DELETE";
+  notification_queued: boolean;
 }
 
 export interface TicketUpdateRow {
@@ -309,6 +319,14 @@ export interface TicketAttachment {
   download_url: string;
 }
 
+export interface SessionPolicy {
+  idle_timeout_seconds: number;
+  warning_seconds: number;
+  idle_expires_at: number;
+  absolute_expires_at: number;
+  server_time: number;
+}
+
 export interface SessionUser {
   id: string;
   username: string;
@@ -323,6 +341,7 @@ export interface SessionUser {
   must_change_password: boolean;
   roles: { code: string; name: string }[];
   permissions: string[];
+  session?: SessionPolicy;
 }
 
 export interface MasterRow {

@@ -12,7 +12,6 @@ import "./LoginPage.css";
 const schema = z.object({
   username: z.string().trim().min(1, "Enter your username or email"),
   password: z.string().min(1, "Enter your password"),
-  remember: z.boolean().optional(),
 });
 
 type LoginValues = z.infer<typeof schema>;
@@ -385,25 +384,7 @@ export function LoginPage() {
                   </div>
 
                   <div className="form-row reveal">
-                    <label className="check">
-                      <input
-                        id="remember"
-                        type="checkbox"
-                        {...register("remember")}
-                      />
-                      <span className="check__box" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none">
-                          <path
-                            d="m6.8 12.1 3.1 3 7.3-7"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </span>
-                      <span>Remember me</span>
-                    </label>
+                    <span className="check">Automatic sign-out when inactive</span>
                   </div>
 
                   <button

@@ -16,6 +16,24 @@ backend's `/api/` route. If a different API origin is required, set
 `VITE_API_ROOT` at build time and configure Django CORS/CSRF origins and cookie
 settings accordingly. The browser never connects directly to Redis.
 
+## Login sessions
+
+The backend supplies session deadlines with login and `/auth/me/`. Defaults:
+30 minutes without interaction, a one-minute warning with Stay signed in, and
+eight hours maximum before another login. Clicks, typing and scrolling send
+throttled activity requests; API polling cannot keep the session alive.
+Sleep/resume and hidden tabs check the original deadline rather than restarting
+the timer. Same-origin tabs share activity (BroadcastChannel) and sign-out
+(storage events); supported browsers serialize refresh rotation with Web Locks.
+
+Manual logout redirects immediately, clears account queries, and revokes the
+server session asynchronously. Failed server logout is reported, retried on
+reconnect/reload, and a persistent signed-out flag prevents silent restoration.
+No JWTs or account data are stored in browser storage. Deploy with the updated
+backend and sign in again after restarting; old tokens require reauthentication.
+The previous non-functional Remember me checkbox is replaced with an inactivity
+sign-out notice; there is no longer an implied unlimited/persistent login option.
+
 ## Dashboard
 
 The dashboard uses a compact, reference-inspired purple/teal design: four
@@ -77,3 +95,20 @@ not distinct tickets or today's current statuses. Search and pagination apply
 to the selected interval; clicking a ticket reference opens its details.
 Dates and times use the backend's timezone, currently Asia/Kolkata. Access
 requires both `bugs.update.view` and `tickets.ticket.view`.
+
+## Unassigned Tickets
+
+The centered three-dot row menu replaces the delete icon. **Not a Ticket** opens
+a confirmation dialog: Cancel makes no change, and confirmation removes the
+request without a deletion email. **Delete** opens a required-reason dialog;
+confirmation removes the request and queues the reason for email to the sender.
+Delivery uses the backend outbox; the UI distinguishes queued notices from
+requests removed without an eligible address or enabled mail setting. Both
+actions retain audit history and existing permissions/state restrictions.
+
+The **Attachment** column follows Description. Its paperclip/count opens the
+same requester-email file list used by ticket details, including original and
+linked reply attachments. Internal uploads and rejected/unstored files are
+excluded. Supported images, PDFs and text files can be previewed through the
+protected backend endpoint; other document formats can be downloaded. Clicking
+these controls does not open the row's assignment dialog.

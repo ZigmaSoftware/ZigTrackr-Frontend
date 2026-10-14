@@ -6,6 +6,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   AlertOctagon, AlertTriangle, Archive, CheckCircle2, ChevronDown, FlaskConical, Inbox, Pause,
   Play, PlayCircle, KeyRound, LifeBuoy, ListFilter, ClipboardList, RotateCcw, Trash2,
+  MoreVertical, Paperclip, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ticketApi } from "@/api/services";
@@ -17,11 +18,13 @@ import { Button, Card, IconButton, Input, Select, Spinner } from "@/components/u
 import { DataTable, TruncatedCell, type Column } from "@/components/tables/DataTable";
 import { Pagination } from "@/components/tables/Pagination";
 import { ErrorState } from "@/components/feedback/states";
-import { ConfirmDialog } from "@/components/feedback/Modal";
+import { ConfirmDialog, Modal } from "@/components/feedback/Modal";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/AuthContext";
-import type { SupportTicketRow } from "@/types";
+import type { SupportTicketRow, TicketRemovalPayload } from "@/types";
+import { EmailAttachmentList } from "./EmailAttachmentList";
+import { DeleteUnassignedTicketDialog } from "./dialogs/DeleteUnassignedTicketDialog";
 import { PriorityBadge } from "@/components/common/badges";
 import { ReviewAssignDialog } from "@/features/tickets/dialogs/ReviewAssignDialog";
 import { DescriptionPreview, RequestPreview, TicketStatusBadge } from "@/features/tickets/TicketTableCells";
@@ -351,8 +354,11 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
   const isUnassigned = presetKey === "unassigned";
   const [reviewTicketId, setReviewTicketId] = useState<string | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<SupportTicketRow | null>(null);
+  const [ticketNotATicket, setTicketNotATicket] = useState<SupportTicketRow | null>(null);
+  const [attachmentTicket, setAttachmentTicket] = useState<SupportTicketRow | null>(null);
   const [ticketToStart, setTicketToStart] = useState<SupportTicketRow | null>(null);
   const canDelete = can("tickets.ticket.delete");
+  const canViewAttachments = can("bugs.attachment.view");
   // Seeded from ?ticket= so an old /tickets/detail/:id link opens the dialog.
   const [detailTicketId, setDetailTicketId] = useState<string | null>(
     () => new URLSearchParams(window.location.search).get("ticket"),
@@ -373,15 +379,20 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
     refetchInterval: 30_000,
   });
   const deleteTicket = useMutation({
-    mutationFn: (id: string) => ticketApi.delete(id),
-    onSuccess: () => {
+    mutationFn: ({ row, payload }: { row: SupportTicketRow; payload: TicketRemovalPayload }) =>
+      ticketApi.delete(row.id, payload),
+    onSuccess: (result, { payload }) => {
       setTicketToDelete(null);
+      setTicketNotATicket(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.sidebarCounts });
-      toast.success("Ticket deleted");
+      if (payload.disposition === "NOT_A_TICKET") toast.success("Marked as Not a Ticket and removed");
+      else if (result.notification_queued) toast.success("Ticket deleted. Deletion email queued.");
+      else toast.warning("Ticket deleted. No email was queued; check the sender address and mail settings.");
     },
     onError: (error) => toast.error(apiErrorMessage(error, "Could not delete the ticket.")),
   });
+  const deletingTicket = deleteTicket.isPending;
   const startWork = useMutation({
     mutationFn: (row: SupportTicketRow) => ticketApi.workTransition(row.id, { to_status: "IN_PROGRESS" }),
     onSuccess: async (_ticket, row) => {
@@ -450,6 +461,21 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
       cell: (row) => <DescriptionPreview value={row.description} />,
     },
     {
+      key: "email_attachment_count",
+      header: "Attachment",
+      align: "center",
+      width: "w-24",
+      cell: (row) => canViewAttachments && (row.email_attachment_count ?? 0) > 0 ? (
+        <button type="button"
+          aria-label={`View ${row.email_attachment_count} email attachments for ${row.ref_no}`}
+          title="View email attachments"
+          className="inline-flex h-8 items-center justify-center gap-1 rounded-md px-2 text-[var(--primary)] hover:bg-[var(--primary)]/10"
+          onClick={(event) => { event.stopPropagation(); setAttachmentTicket(row); }}>
+          <Paperclip className="size-4" aria-hidden /><span className="text-xs">{row.email_attachment_count}</span>
+        </button>
+      ) : <span className="text-[var(--muted-foreground)]">—</span>,
+    },
+    {
       // The original-mail timestamp is annotated by the ticket queryset.
       key: "original_mail_received_at",
       header: "Mailed date",
@@ -472,20 +498,33 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
       width: "w-14",
       cell: (row) => row.can_delete ? (
         <div className="flex w-full justify-center">
-          <IconButton
-            label={`Delete ${row.ref_no}`}
-            className="text-[var(--destructive)] hover:bg-red-500/10"
-            onClick={(event) => {
-              event.stopPropagation();
-              setTicketToDelete(row);
-            }}
-          >
-            <Trash2 />
-          </IconButton>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <IconButton label={`Actions for ${row.ref_no}`} disabled={deletingTicket}
+                onClick={(event) => event.stopPropagation()}>
+                <MoreVertical />
+              </IconButton>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content align="end" sideOffset={6}
+                onClick={(event) => event.stopPropagation()}
+                className="z-50 min-w-44 rounded-lg border border-[var(--border)] bg-[var(--popover)] p-1 shadow-[var(--shadow-pop)]">
+                <DropdownMenu.Item
+                  onSelect={() => setTicketNotATicket(row)}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-[13px] outline-none data-[highlighted]:bg-[var(--muted)]">
+                  <XCircle className="size-4" aria-hidden /> Not a Ticket
+                </DropdownMenu.Item>
+                <DropdownMenu.Item onSelect={() => setTicketToDelete(row)}
+                  className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-[13px] text-[var(--destructive)] outline-none data-[highlighted]:bg-[var(--muted)]">
+                  <Trash2 className="size-4" aria-hidden /> Delete
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         </div>
       ) : null,
     } satisfies Column<SupportTicketRow>] : []),
-  ], [canDelete]);
+  ], [canDelete, canViewAttachments, deletingTicket]);
 
   const columns = useMemo<Column<SupportTicketRow>[]>(() => [
     {
@@ -813,15 +852,26 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
       />
 
       <ConfirmDialog
-        open={ticketToDelete !== null}
-        onOpenChange={(open) => { if (!open && !deleteTicket.isPending) setTicketToDelete(null); }}
-        title="Delete unassigned ticket?"
-        description={`${ticketToDelete?.ref_no ?? "This ticket"} will be removed from the review queue. Its history will be retained for audit.`}
-        confirmLabel="Delete ticket"
+        open={ticketNotATicket !== null}
+        onOpenChange={(open) => { if (!open && !deletingTicket) setTicketNotATicket(null); }}
+        title="Mark as Not a Ticket?"
+        description={`${ticketNotATicket?.ref_no ?? "This request"}${ticketNotATicket ? ` · ${ticketNotATicket.title}` : ""} will be removed from Unassigned Tickets. Its history will be retained for audit. No deletion email will be sent to the sender.`}
+        confirmLabel="Not a Ticket"
         destructive
-        loading={deleteTicket.isPending}
-        onConfirm={() => { if (ticketToDelete) deleteTicket.mutate(ticketToDelete.id); }}
+        loading={deletingTicket}
+        onConfirm={() => { if (ticketNotATicket && !deletingTicket) deleteTicket.mutate({ row: ticketNotATicket, payload: { disposition: "NOT_A_TICKET" } }); }}
       />
+      {ticketToDelete ? (
+        <DeleteUnassignedTicketDialog key={ticketToDelete.id} ticket={ticketToDelete}
+          pending={deleteTicket.isPending} onClose={() => setTicketToDelete(null)}
+          onDelete={(reason) => deleteTicket.mutate({ row: ticketToDelete, payload: { disposition: "DELETE", reason } })} />
+      ) : null}
+      {attachmentTicket ? (
+        <Modal open onOpenChange={(open) => { if (!open) setAttachmentTicket(null); }}
+          title={`Email attachments · ${attachmentTicket.ref_no}`} description={attachmentTicket.title} size="lg">
+          <EmailAttachmentList ticketId={attachmentTicket.id} />
+        </Modal>
+      ) : null}
     </>
   );
 }

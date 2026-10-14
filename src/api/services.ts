@@ -1,4 +1,4 @@
-import { del, get, patch, post, api } from "@/api/client";
+import { del, get, patch, post, api, withAuthSessionLock } from "@/api/client";
 import type {
   ActivityRow, Attachment, BugDetail, BugListRow, BugUpdateRow, ChartDatum,
   DashboardKpis, MasterRow, Paginated, SessionUser, SidebarCounts,
@@ -6,14 +6,15 @@ import type {
   TimelineEvent, UserLite, WorkloadRow,
   SupportTicketDetail,
   PermissionMatrix,
-  RoleRow,
+  RoleRow, SessionPolicy, TicketRemovalPayload, TicketRemovalResult,
 } from "@/types";
 
 /* ---- AUTH ---- */
 export const authApi = {
   login: (username: string, password: string) =>
-    post<SessionUser>("/auth/login/", { username, password }),
-  logout: () => post<null>("/auth/logout/"),
+    withAuthSessionLock(() => post<SessionUser>("/auth/login/", { username, password })),
+  logout: () => withAuthSessionLock(() => api.post("/auth/logout/", undefined, { timeout: 5_000 })),
+  activity: () => post<SessionPolicy>("/auth/activity/"),
   me: () => get<SessionUser>("/auth/me/"),
   changePassword: (payload: {
     current_password: string; new_password: string; confirm_password: string;
@@ -69,7 +70,8 @@ export const ticketApi = {
   list: (params: Record<string, unknown>) =>
     get<Paginated<SupportTicketRow>>("/tickets/", params),
   detail: (id: string) => get<SupportTicketDetail>(`/tickets/${id}/`),
-  delete: (id: string) => del<null>(`/tickets/${id}/`),
+  delete: (id: string, payload: TicketRemovalPayload) =>
+    del<TicketRemovalResult>(`/tickets/${id}/`, payload),
   create: (payload: Record<string, unknown>) => post<SupportTicketDetail>("/tickets/", payload),
   review: (id: string, payload: Record<string, unknown>) =>
     post<SupportTicketDetail>(`/tickets/${id}/review/`, payload),

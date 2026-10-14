@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Tabs from "@radix-ui/react-tabs";
 import {
-  Bot, CircleAlert, FileText, FlaskConical, GitCommit,
-  Image as ImageIcon, MessageSquare, MessageSquarePlus, Paperclip, PlayCircle,
+  Bot, CircleAlert, FlaskConical, GitCommit,
+  MessageSquare, MessageSquarePlus, Paperclip, PlayCircle,
   RotateCcw, ShieldCheck, UserCheck, UserRoundCheck, X, XCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -24,8 +24,8 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { personWithRole } from "@/lib/personRole";
 import { mergeChatMessages } from "@/lib/ticketChat";
 import { TicketChat } from "@/components/chat/TicketChat";
-import { AttachmentActions } from "@/components/attachments/AttachmentActions";
-import { cn, formatBytes } from "@/lib/utils";
+import { EmailAttachmentList } from "../EmailAttachmentList";
+import { cn } from "@/lib/utils";
 import type { RequestMessage, SupportTicketDetail, TicketChatMessage, TicketTimelineEvent } from "@/types";
 import "./TicketDetailDialog.css";
 
@@ -490,55 +490,7 @@ function TimelineTab({ ticket }: { ticket: SupportTicketDetail }) {
 /* ---- TAB 3: ATTACHMENTS ---- */
 
 function AttachmentsTab({ ticket }: { ticket: SupportTicketDetail }) {
-  const { data, isLoading } = useQuery({
-    queryKey: queryKeys.tickets.attachments(ticket.id),
-    queryFn: () => ticketApi.emailAttachments(ticket.id),
-  });
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-[13px] font-semibold">Attachments ({data?.length ?? 0})</h3>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 2 }).map((_, index) => <Skeleton key={index} className="h-12" />)}
-        </div>
-      ) : !data || data.length === 0 ? (
-        <EmptyState
-          icon={<Paperclip className="size-8" aria-hidden />}
-          title="No email attachments"
-          description="Files sent by the requester will appear here."
-        />
-      ) : (
-        <ul className="divide-y divide-[var(--border)]">
-          {data.map((attachment) => (
-            <li key={attachment.id} className="flex items-start gap-3 py-3">
-              <span className="grid size-8 shrink-0 place-items-center rounded bg-[var(--muted)]">
-                {attachment.file_type.startsWith("image/")
-                  ? <ImageIcon className="size-4" aria-hidden />
-                  : <FileText className="size-4" aria-hidden />}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium">{attachment.file_name}</p>
-                <p className="text-[11px] text-[var(--foreground)]">
-                  {attachment.reason}
-                </p>
-                <p className="text-[11px] text-[var(--muted-foreground)]">
-                  {formatBytes(attachment.file_size)} · {attachment.uploaded_by_name || "Requester"} ·{" "}
-                  {formatDateTime(attachment.uploaded_at)}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <AttachmentActions attachment={attachment} elevated />
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+  return <EmailAttachmentList ticketId={ticket.id} />;
 }
 
 /* ---- ACTION DIALOG ---- */

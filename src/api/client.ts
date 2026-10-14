@@ -20,6 +20,11 @@ export const api: AxiosInstance = axios.create({
   xsrfHeaderName: "X-CSRFToken",
 });
 
+type SessionRequestConfig = InternalAxiosRequestConfig & {
+  _retried?: boolean;
+  _authGeneration?: number;
+};
+
 function readCookie(name: string): string | null {
   const match = document.cookie.match(new RegExp(`(^|;\\s*)${name}=([^;]*)`));
   return match ? decodeURIComponent(match[2]) : null;
@@ -28,6 +33,7 @@ function readCookie(name: string): string | null {
 const UNSAFE_METHODS = new Set(["post", "put", "patch", "delete"]);
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  (config as SessionRequestConfig)._authGeneration = sessionGeneration;
   const method = (config.method ?? "get").toLowerCase();
   if (UNSAFE_METHODS.has(method)) {
     const token = readCookie("csrftoken");
@@ -46,13 +52,39 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
    logs the user out mid-session. */
 let refreshInFlight: Promise<void> | null = null;
 let onSessionLost: (() => void) | null = null;
+let sessionBlocked = false;
+let sessionGeneration = 0;
 
-export function setSessionLostHandler(handler: () => void) {
+export function allowSessionRequests() {
+  sessionBlocked = false;
+  sessionGeneration += 1;
+}
+
+export function blockSessionRefresh() {
+  sessionBlocked = true;
+  sessionGeneration += 1;
+}
+
+export function setSessionLostHandler(handler: (() => void) | null) {
   onSessionLost = handler;
 }
 
+export async function withAuthSessionLock<T>(operation: () => Promise<T>): Promise<T> {
+  // Login/logout also share the lock: a delayed sign-out in another tab must
+  // finish before the browser receives a new login's cookies.
+  if (navigator.locks) return navigator.locks.request("zigtrackr-auth-session", operation);
+  return operation();
+}
+
 async function refreshSession(): Promise<void> {
-  await api.post("/auth/refresh/");
+  const generation = sessionGeneration;
+  const refresh = () => {
+    if (sessionBlocked || generation !== sessionGeneration) throw new Error("Session ended.");
+    return api.post("/auth/refresh/", undefined, { timeout: 5_000 });
+  };
+  // Cookies are shared between tabs; serialize rotation across tabs as well.
+  await withAuthSessionLock(refresh);
+  if (sessionBlocked || generation !== sessionGeneration) throw new Error("Session ended.");
 }
 
 // The public lookup has no session to refresh or lose: a visitor on /track is
@@ -64,12 +96,17 @@ const NO_RETRY_PATHS = [
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const config = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
+    const config = error.config as SessionRequestConfig | undefined;
     const status = error.response?.status;
     const url = config?.url ?? "";
+    if (config?._authGeneration !== undefined && config._authGeneration !== sessionGeneration) {
+      // An old account's delayed 401 must not refresh or end a newer session.
+      return Promise.reject(error);
+    }
 
     const retryable =
       status === 401 &&
+      !sessionBlocked &&
       config &&
       !config._retried &&
       !NO_RETRY_PATHS.some((path) => url.includes(path));
@@ -83,12 +120,12 @@ api.interceptors.response.use(
         await refreshInFlight;
         return api.request(config);
       } catch {
-        onSessionLost?.();
+        if (!sessionBlocked && config._authGeneration === sessionGeneration) onSessionLost?.();
         return Promise.reject(error);
       }
     }
 
-    if (status === 401 && !NO_RETRY_PATHS.some((p) => url.includes(p))) {
+    if (status === 401 && !sessionBlocked && !NO_RETRY_PATHS.some((p) => url.includes(p))) {
       onSessionLost?.();
     }
     return Promise.reject(error);
@@ -119,8 +156,8 @@ export async function put<T>(url: string, data?: unknown): Promise<T> {
   return response.data.data;
 }
 
-export async function del<T>(url: string): Promise<T> {
-  const response = await api.delete<ApiEnvelope<T>>(url);
+export async function del<T>(url: string, data?: unknown): Promise<T> {
+  const response = await api.delete<ApiEnvelope<T>>(url, { data });
   return response.data.data;
 }
 
