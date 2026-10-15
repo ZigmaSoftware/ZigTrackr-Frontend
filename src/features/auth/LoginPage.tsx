@@ -392,13 +392,15 @@ export function LoginPage() {
                     id="submitButton"
                     type="submit"
                     disabled={isSubmitting}
-                    /* CSS user-select stops NEW selections but cannot clear one
-                       that already covers the button -- a drag beginning
-                       outside it still paints the label. Collapsing the
-                       selection on mousedown removes it in that case too. */
+                    aria-label={isSubmitting ? "Authenticating" : "Enter workspace"}
                     onMouseDown={() => window.getSelection()?.removeAllRanges()}
                   >
-                    <span className="submit__label" id="submitLabel">
+                    <span
+                      className="submit__label"
+                      id="submitLabel"
+                      aria-hidden="true"
+                      style={{ userSelect: "none", pointerEvents: "none", WebkitUserSelect: "none" }}
+                    >
                       {isSubmitting ? "Authenticating" : "Enter workspace"}
                     </span>
                     <span className="submit__icon">

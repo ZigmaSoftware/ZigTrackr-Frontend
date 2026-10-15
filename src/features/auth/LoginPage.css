@@ -1664,7 +1664,11 @@
   color: #fff;
   box-shadow: 0 14px 34px -12px rgba(79, 70, 229, 0.75);
 }
-.zigma-login .submit__label,
+.zigma-login .submit__label {
+  color: #fff;
+  background: none;
+  box-shadow: none;
+}
 .zigma-login .submit__icon {
   color: var(--violet-deep);
   background: rgba(255, 255, 255, 0.92);

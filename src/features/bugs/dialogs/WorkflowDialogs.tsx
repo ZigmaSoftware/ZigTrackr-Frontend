@@ -354,6 +354,7 @@ export function ResolveDialog({ bug, open, onOpenChange }: BaseProps) {
 
   async function submit() {
     const next: Record<string, string> = {};
+    if (!rootCauseType) next.root_cause_type = "Please select a root cause category.";
     if (!rootCause.trim()) next.root_cause = "Root cause is required.";
     if (!resolution.trim()) next.resolution = "Resolution is required.";
     setErrors(next);
@@ -384,16 +385,14 @@ export function ResolveDialog({ bug, open, onOpenChange }: BaseProps) {
     >
       <div className="space-y-3.5">
         <div className="space-y-1.5">
-          <Label htmlFor="rc-type">Root cause category</Label>
+          <Label htmlFor="rc-type" required>Root cause category</Label>
           <Select id="rc-type" value={rootCauseType} onChange={(e) => setRootCauseType(e.target.value)}>
             <option value="">Select a category…</option>
             {(rootCauseTypes.data ?? []).map((type) => (
               <option key={type.id} value={type.id}>{type.name}</option>
             ))}
           </Select>
-          <p className="text-[11px] text-[var(--muted-foreground)]">
-            Drives the Root Cause Analysis report.
-          </p>
+          <FieldError message={errors.root_cause_type} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="rc-detail" required>Root cause</Label>

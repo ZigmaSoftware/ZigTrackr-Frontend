@@ -55,6 +55,8 @@ export const queryKeys = {
     all: ["reports"] as const,
     one: (name: string, params?: Record<string, unknown>) =>
       ["reports", name, params ?? {}] as const,
+    drilldown: (context: string, params: Record<string, unknown>) =>
+      ["reports", "drilldown", context, params] as const,
   },
 
   team: {
