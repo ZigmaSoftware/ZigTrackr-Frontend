@@ -3,9 +3,11 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Bell, LogOut, Menu, Moon, Plus, Search, Sun, User } from "lucide-react";
+import { LogOut, Menu, Moon, Plus, Search, Sun, User } from "lucide-react";
 import { dashboardApi } from "@/api/services";
 import { queryKeys } from "@/api/queryKeys";
+import { useInboxSocket } from "@/hooks/useInboxSocket";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useAuth } from "@/features/auth/AuthContext";
 import { Sidebar } from "@/layouts/Sidebar";
 import { Button, IconButton } from "@/components/ui/primitives";
@@ -42,6 +44,10 @@ export function AppLayout() {
     refetchInterval: 120_000,
     staleTime: 60_000,
   });
+  /* Pushes unread counts the moment a message lands on any conversation, not
+     just the one on screen. The interval above stays as the fallback for when
+     the socket is down. */
+  useInboxSocket(Boolean(user));
 
   async function handleLogout() {
     await logout();
@@ -101,9 +107,7 @@ export function AppLayout() {
                 </Button>
               ) : null}
 
-              <IconButton label="Notifications" onClick={() => navigate("/notifications")}>
-                <Bell />
-              </IconButton>
+              <NotificationBell />
 
               <IconButton
                 label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}

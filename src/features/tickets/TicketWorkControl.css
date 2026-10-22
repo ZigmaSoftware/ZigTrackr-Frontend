@@ -1,11 +1,11 @@
 .ticket-work-pill {
   display: inline-flex;
-  width: 148px;
+  width: 116px;
   height: 36px;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
-  padding: 0 9px;
+  gap: 5px;
+  padding: 0 7px;
   border: 1px solid #cbd8f0;
   border-radius: 8px;
   background: #f4f7ff;
@@ -48,6 +48,8 @@
 }
 
 .ticket-work-pill-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
   min-width: 0;
   flex: 1;
   text-align: left;

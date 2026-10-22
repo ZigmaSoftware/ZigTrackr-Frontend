@@ -1,30 +1,39 @@
-.track-page{--blue:#2568e8;--blue-dark:#1655c7;--ink:#14243b;--text:#24364d;--muted:#718198;--line:#d9e3ed;--line-strong:#cbd8e5;--soft:#f2f6fa;--white:#fff;min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:radial-gradient(circle at 10% 78%,rgba(122,113,97,.12) 0 21px,transparent 22px),radial-gradient(circle at 14% 84%,rgba(255,255,255,.96) 0 7px,transparent 8px),radial-gradient(circle at 86% 24%,rgba(118,111,99,.10) 0 25px,transparent 26px),radial-gradient(circle at 82% 30%,rgba(255,255,255,.9) 0 9px,transparent 10px),linear-gradient(138deg,#fff 0%,#f8f6ef 48%,#eef5f6 100%);overflow-x:hidden}
-.track-page *,.track-page *:before,.track-page *:after{box-sizing:border-box}
-.track-page:before{content:"";position:fixed;left:-10vw;right:-10vw;bottom:-18vh;height:50vh;pointer-events:none;background:radial-gradient(ellipse at 18% 48%,rgba(255,255,255,.88),transparent 42%),radial-gradient(ellipse at 63% 65%,rgba(185,204,207,.17),transparent 48%),linear-gradient(to bottom,rgba(255,255,255,0),rgba(230,236,231,.72))}
-.track-page-inner{width:min(1440px,94vw);margin:auto;position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
-.track-header{height:82px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(190,203,216,.68)}
-.track-brand{display:flex;align-items:center;gap:12px;font-size:24px;font-weight:800}
-.track-logo{width:40px;height:40px;border-radius:12px;background:var(--ink);color:#fff;display:grid;place-items:center}
-.track-support{font-size:13px;font-weight:500;color:var(--muted);padding-left:16px;border-left:1px solid var(--line)}
-.track-status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-.track-status i{width:7px;height:7px;border-radius:50%;background:var(--blue);display:block}
-.track-main{flex:1;display:grid;place-items:center;padding:46px 0 70px}
-.track-page.has-ticket .track-main{padding:24px 0 30px}
-.track-hero{text-align:center;width:min(760px,100%)}
-.track-kicker{font-size:12px;font-weight:800;letter-spacing:.17em;color:var(--blue);text-transform:uppercase}
-.track-hero h1{font-size:45px;line-height:1.08;letter-spacing:-.04em;margin:13px 0 10px;font-weight:800}
-.track-sub{font-size:14px;color:var(--muted);margin:0 0 30px}
-.track-stone{position:absolute;border-radius:50%;filter:drop-shadow(0 12px 17px rgba(55,64,67,.14));opacity:.78;z-index:-1}
-.track-s1{width:100px;height:60px;left:5%;bottom:10%;background:radial-gradient(circle at 35% 28%,#e8e4da,#aaa69f 58%,#747a77);transform:rotate(-8deg)}
-.track-s2{width:52px;height:36px;left:13%;bottom:7%;background:radial-gradient(circle at 35% 28%,#f4f0e8,#b5b1aa 60%,#858a86);transform:rotate(8deg)}
-.track-s3{width:118px;height:67px;right:5%;bottom:13%;background:radial-gradient(circle at 35% 28%,#e1ddd4,#a3a099 58%,#737977);transform:rotate(7deg)}
-.tracker-card{width:min(480px,94vw);min-height:400px;margin:0 auto;position:relative;overflow:hidden;border-radius:22px;background:rgba(255,255,255,.91);backdrop-filter:blur(18px);border:1px solid rgba(202,216,229,.82);box-shadow:0 18px 40px rgba(34,56,78,.10),0 4px 11px rgba(34,56,78,.05),inset 0 1px 0 rgba(255,255,255,.96);isolation:isolate}
-.tracker-card.has-result{height:min(580px,calc(100dvh - 290px));min-height:400px;display:flex;flex-direction:column}
-.tracker-card:before{content:"";position:absolute;inset:-2px;border-radius:24px;padding:2px;background:conic-gradient(from var(--gemini-angle),#49c8ff 0deg 54deg,#22d3ee 54deg 92deg,#34a853 92deg 125deg,#fbbc04 125deg 152deg,#ff7a59 152deg 182deg,#ea4335 182deg 214deg,#a855f7 214deg 252deg,#4285f4 252deg 320deg,#49c8ff 320deg 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:3;animation:geminiOrbit 4.2s linear infinite}
-.tracker-card:after{content:"";position:absolute;inset:-5px;border-radius:27px;background:conic-gradient(from var(--gemini-angle),rgba(73,200,255,.42),rgba(52,168,83,.30),rgba(251,188,4,.26),rgba(234,67,53,.24),rgba(168,85,247,.28),rgba(66,133,244,.38),rgba(73,200,255,.42));filter:blur(10px);opacity:.52;pointer-events:none;z-index:-1;animation:geminiOrbit 4.2s linear infinite}
-@property --gemini-angle{syntax:"<angle>";inherits:false;initial-value:0deg}
-@keyframes geminiOrbit{to{--gemini-angle:360deg}}
-@media(prefers-reduced-motion:reduce){.tracker-card:before,.tracker-card:after{animation:none}}
+@font-face {
+  font-family:"Track Inter"; font-style:normal; font-weight:400 800; font-display:swap;
+  src:url("/fonts/inter-latin-variable.woff2") format("woff2");
+}
+.track-page {
+  --blue:#2864d9; --blue-dark:#2056bf; --ink:#202b3b; --text:#202b3b;
+  --muted:#687487; --line:#dfe5ec; --line-strong:#dfe5ec; --soft:#f3f6fa; --white:#fff;
+  min-height:100svh; position:relative; isolation:isolate;
+  font-family:"Track Inter",Arial,Helvetica,sans-serif; color:var(--ink); background:#f4f7fa;
+  color-scheme:light; letter-spacing:0;
+}
+.track-page *, .track-page *::before, .track-page *::after { box-sizing:border-box; }
+.track-page button, .track-page input, .track-page textarea { font-family:inherit; letter-spacing:0; }
+.track-page button:focus-visible { outline:3px solid var(--blue); outline-offset:3px; }
+.track-signal-background { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:-1; }
+.track-page-inner { width:min(1280px,100%); min-height:100svh; margin:auto; padding:0 48px; display:flex; flex-direction:column; }
+.track-header { min-height:84px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); }
+.track-brand { display:flex; align-items:center; gap:11px; font-size:22px; font-weight:700; }
+.track-logo { width:34px; height:34px; border-radius:6px; background:var(--ink); color:#fff; display:grid; place-items:center; font-size:21px; }
+.track-support { font-size:12px; font-weight:400; color:var(--muted); padding-left:14px; margin-left:3px; border-left:1px solid var(--line); }
+.track-status { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); }
+.track-main { flex:1; display:grid; place-items:center; padding:46px 0 52px; }
+.track-page.has-ticket .track-main { padding:28px 0 32px; }
+.track-hero { text-align:center; width:100%; min-width:0; }
+.track-kicker { display:inline-flex; align-items:center; gap:8px; font-size:11px; line-height:16px; font-weight:600; color:var(--blue); }
+.track-kicker::before { content:""; width:19px; height:2px; background:var(--blue); }
+.track-hero h1 { font-size:36px; line-height:44px; letter-spacing:0; margin:12px 0 11px; font-weight:650; }
+.track-sub { font-size:14px; line-height:23px; color:var(--muted); margin:0 0 27px; }
+.tracker-card { width:460px; max-width:100%; margin:0 auto; overflow:hidden; border-radius:8px; background:var(--white); border:1px solid var(--line); box-shadow:0 18px 54px -30px #31445f55; text-align:left; }
+.tracker-card.has-result { min-height:540px; display:flex; flex-direction:column; }
+.track-card-note { flex:none; padding:14px 26px; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:center; gap:7px; font-size:11px; line-height:18px; color:var(--muted); background:var(--soft); }
+.track-card-note svg { flex:none; }
+.track-under-card { margin:18px 0 0; font-size:11px; line-height:18px; color:var(--muted); text-align:center; }
+.track-email-input { position:relative; }
+.track-email-input > svg { position:absolute; top:15px; left:14px; color:var(--muted); pointer-events:none; }
+.track-page .track-email-input input { padding-left:43px; }
 .track-card-head{padding:22px 24px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;text-align:left;flex:none}
 .track-card-heading{display:flex;align-items:center;gap:9px;min-width:0}.track-back{width:32px;height:32px;flex:none;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--ink);cursor:pointer}.track-back:hover,.track-back:focus-visible{background:rgba(37,104,232,.11);outline:none}
 .track-card-title{font-size:16px;font-weight:800}.track-card-sub{font-size:12px;color:var(--muted);margin-top:4px}
@@ -43,113 +52,232 @@
 .track-empty{font-size:12px;color:var(--muted);margin:0}
 .track-reopen{display:flex;flex:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;padding:11px 22px;border-bottom:1px solid var(--line);background:#f3f8ff;text-align:left}.track-reopen p{flex:1;min-width:150px;margin:0;color:#425c78;font-size:11px;line-height:1.4}.track-reopen-button,.track-reopen-actions button:last-child{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;background:var(--blue);color:white;border:0;border-radius:7px;padding:7px 11px;font-size:12px;font-weight:800;white-space:nowrap;cursor:pointer}.track-reopen-button:hover,.track-reopen-actions button:last-child:hover{background:var(--blue-dark)}.track-reopen form{width:100%}.track-reopen label{margin-bottom:6px}.track-reopen textarea{width:100%;min-height:64px;resize:vertical;border:1px solid var(--line-strong);border-radius:7px;background:#fff;padding:8px 10px;font:13px Inter,ui-sans-serif,system-ui,sans-serif;outline:none}.track-reopen-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:7px}.track-reopen-actions button:first-child{min-height:34px;background:transparent;border:0;color:#425c78;font-size:12px;cursor:pointer}.track-reopen-actions button:disabled{opacity:.5;cursor:not-allowed}.track-reopen-error{flex:none;margin:0;padding:8px 22px;border-bottom:1px solid #eab7b7;background:#fff5f5;color:#a32929;font-size:12px;text-align:left}
 .track-footer{height:68px;border-top:1px solid rgba(190,203,216,.68);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted)}
-@media(max-width:640px){.track-header{height:72px}.track-support,.track-status{display:none}.track-main{padding-top:30px}.track-page.has-ticket .track-main{padding:18px 0 22px}.track-hero h1{font-size:35px}.tracker-card{width:96vw;border-radius:18px}.tracker-card.has-result{height:min(560px,calc(100dvh - 260px));min-height:380px}.track-form,.track-panel{padding-left:18px;padding-right:18px}.track-ticket-summary{align-items:flex-start}.track-ticket-title{overflow-wrap:anywhere}.track-secure{display:none}.track-activity-date{width:100%}.track-stone{opacity:.45}}
+/* ---- OTP STEP ---- */
+.track-otp-lead{margin:0 0 18px;font-size:13px;line-height:1.55;color:var(--text)}
+.track-otp-lead strong{color:var(--ink);word-break:break-word}
+.track-code-input{text-align:center;font-family:Consolas,'Courier New',monospace;
+  font-size:24px;font-weight:700;letter-spacing:10px;text-indent:10px;height:56px}
+.track-otp-actions{display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin-top:14px}
+.track-otp-link{border:0;background:transparent;padding:0;font-size:12px;
+  font-weight:700;color:var(--blue);cursor:pointer}
+.track-otp-link:hover:not(:disabled){text-decoration:underline}
+.track-otp-link:disabled{color:var(--muted);cursor:default;font-weight:500}
 
-/* ---- VIDEO BACKGROUND ----
-   The footage is an abstract orange/violet ribbon on a mostly white field, so
-   the page's own gradient and ::before haze are cleared and the video takes
-   the base layer. Because it is predominantly white and uncluttered, the
-   dark-ink text reads directly over it -- no frosted plates are needed, and
-   adding them would show as grey boxes against the white. */
-/* The source is 720x720 stretched across a much wider viewport, so it reads
-   soft. A deliberate blur turns that upscaling softness into an intentional
-   look rather than a defect -- and because the footage is an abstract
-   gradient, blurring costs no real detail. scale(1.08) hides the transparent
-   edge the blur would otherwise pull in at the borders. */
-.track-bg-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;
-  pointer-events:none;filter:blur(34px) saturate(1.12);transform:scale(1.08)}
-/* Matches the footage's dominant white so there is no flash of a wrong colour
-   before the first frame paints. */
-.track-page{background:#fff}
-.track-page:before{display:none}
-/* The stones belonged to the old flat-gradient scene and read as debris over
-   moving footage. */
-.track-stone{display:none}
-.track-page-inner{z-index:1}
-.track-header,.track-footer{border-color:rgba(120,110,150,.22)}
-/* The ribbon sweeps across the subtitle at some points in the loop; the
-   default muted grey washed out against it. */
-.track-sub{color:#3a4a60}
-/* The card keeps an opaque surface: the ribbon passes behind it and would
-   otherwise tint the form. The conic-gradient halo (::after) spread far enough
-   to wash the card's interior, so it is dropped while the crisp animated
-   border (::before) -- the actual design feature -- is kept. */
-/* The multi-colour Gemini ring lives on the CARD. Against this colourful
-   backdrop a 2px ring read as thin, so the ring is thickened and the outer
-   halo -- disabled while the busy underwater video was in use -- is restored
-   to lift the card off the video. */
-/* Frosted glass, matching the login page's auth-card: 40% white over a 40px
-   blur. The blur -- not the opacity -- does the legibility work, which is what
-   lets the card stay this transparent while the text underneath stays sharp. */
-/* The login page can sit at 40% because its backdrop-filter does the
-   legibility work. Here the video is ALREADY blurred 34px, so a further
-   backdrop blur adds nothing and the card was just tinted glass over strong
-   colour. Raising the white to 72% restores a readable surface while keeping
-   the ribbon clearly visible through it. */
-.tracker-card{background:rgba(255,255,255,.72);
-  backdrop-filter:blur(18px) saturate(1.25);
-  -webkit-backdrop-filter:blur(18px) saturate(1.25);
-  border:0;
-  box-shadow:0 30px 80px -34px rgba(60,40,130,.55),inset 0 1px 0 rgba(255,255,255,.9)}
-/* The ring sits ON the card edge rather than outside it. At inset:-3px it was
-   being covered by the card's own background; inset:0 with the mask excluding
-   the content box paints it as the card's actual border. */
-/* Gemini's border is not a solid colour wheel spinning. The base ring uses
-   HARD stops (`#49c8ff 0deg 54deg`), which is what made it read as uniform
-   rotating blocks. Here the stops are single angles so the colours bleed into
-   one another, and long neutral gaps are left between them so a few bright
-   bands travel around a mostly-quiet ring -- that travelling-light quality is
-   the actual effect. Two layers at different speeds and directions stop the
-   motion from looking like one rigid wheel. */
-/* Matching the Google reference: colour is NOT wrapped evenly around the card.
-   It pools at two opposite corners -- top-right and bottom-left -- while the
-   left and right mid-sides stay plain.
-
-   But the colours still FLOW through those pools rather than sitting static.
-   That is done with an oversized conic gradient (the moving colour source,
-   spinning via --gemini-angle) which is then MASKED so it is only visible at
-   the two corners. The mask fixes WHERE colour appears; the spin keeps the
-   hues travelling through it. A plain conic ring could not do this because a
-   conic sweep always paints every side equally. */
-.tracker-card:before{inset:0;border-radius:22px;padding:2.5px;z-index:4;
-  background:
-    conic-gradient(from var(--gemini-angle),
-      #4285f4 0deg, #49c8ff 38deg, #34a853 86deg, #fbbc04 142deg,
-      #ff7a59 186deg, #ea4335 232deg, #a855f7 290deg, #4285f4 360deg),
-    linear-gradient(0deg, rgba(190,195,215,.45), rgba(190,195,215,.45));
-  /* Two masks combined: the ring mask (content-box exclusion) that turns the
-     fill into a border, intersected with a corner mask that fades the colour
-     out along the left and right mid-sides. */
-  -webkit-mask:
-    linear-gradient(218deg,#000 0%,#000 20%,transparent 44%,transparent 56%,#000 80%,#000 100%),
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite:source-in,xor;
-  mask:
-    linear-gradient(218deg,#000 0%,#000 20%,transparent 44%,transparent 56%,#000 80%,#000 100%),
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite:intersect,exclude;
-  animation:geminiOrbit 5.2s linear infinite}
-
-/* The outer bloom is DROPPED. The card has `overflow:hidden` (it needs it, to
-   clip the scrolling result panel), which forces any child glow to render
-   inside the card where it tints the form and ruins text contrast. A halo
-   would have to live outside the card entirely; the masked border plus the
-   existing drop shadow already give enough separation from the video. */
-.track-card-sheen{display:none}
-
-@media(prefers-reduced-motion:reduce){
-  .tracker-card:before,.track-card-sheen{animation:none}
+/* ---- UNREAD CHAT BADGE ---- */
+.track-tab{display:inline-flex;align-items:center;gap:7px}
+.track-tab.has-unread{color:var(--ink)}
+.track-tab-badge{
+  display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;
+  border-radius:999px;background:var(--blue);color:#fff;
+  font-size:10.5px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;
+  box-shadow:0 0 0 3px rgba(37,104,232,.16);
+  animation:trackBadgePop .28s cubic-bezier(.34,1.56,.64,1)
 }
-/* `isolation:isolate` on the card makes a z-index:-1 pseudo-element paint
-   INSIDE the card's stacking context, so the halo tinted the form instead of
-   glowing behind it. The drop shadow provides the lift instead. */
-.tracker-card:after{display:none}
-/* The head's own light fill would hide the frosting. */
-.track-card-head{background:transparent}
-.track-form{background:transparent}
-/* Inputs need their own surface to stay readable over the moving gradient. */
-.track-page input{background:rgba(255,255,255,.92);border-color:rgba(120,110,150,.32)}
-@media(prefers-reduced-motion:reduce){.track-bg-video{display:none}}
+@keyframes trackBadgePop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+/* A quiet pulse draws the eye without the badge becoming a distraction while
+   the reader is part-way through the timeline. */
+.track-tab.has-unread:not(.active) .track-tab-badge{
+  animation:trackBadgePop .28s cubic-bezier(.34,1.56,.64,1),
+            trackBadgePulse 2.4s ease-in-out .3s infinite
+}
+@keyframes trackBadgePulse{
+  0%,100%{box-shadow:0 0 0 3px rgba(37,104,232,.16)}
+  50%{box-shadow:0 0 0 6px rgba(37,104,232,.05)}
+}
+@media(prefers-reduced-motion:reduce){
+  .track-tab-badge,.track-tab.has-unread:not(.active) .track-tab-badge{animation:none}
+}
 
+/* ---- TICKET LIST ---- */
+.track-signout{border:0;background:transparent;padding:0;font-size:11.5px;font-weight:700;
+  color:var(--blue);cursor:pointer}
+.track-signout:hover{text-decoration:underline}
+.track-list-head{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 22px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted)}
+.track-list-unread{color:var(--blue);font-weight:800}
+.track-list{list-style:none;margin:0;padding:0;overflow-y:auto;overscroll-behavior:contain;
+  flex:1;min-height:0}
+.track-list-row{display:flex;align-items:center;gap:12px;width:100%;
+  padding:13px 22px;border:0;border-bottom:1px solid var(--line);
+  background:transparent;text-align:left;cursor:pointer}
+.track-list-row:hover,.track-list-row:focus-visible{background:rgba(37,104,232,.06);outline:none}
+.track-list-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.track-list-top{display:flex;align-items:center;gap:9px}
+.track-list-top strong{font-size:13px;font-weight:800;color:var(--ink)}
+.track-list-subject{font-size:13px;color:var(--text);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.track-list-foot{font-size:11px;color:var(--muted)}
+/* An unread row earns a heavier subject and an accent edge, so the list can be
+   scanned without reading every line. */
+.track-list-row.has-unread{box-shadow:inset 3px 0 0 var(--blue)}
+.track-list-row.has-unread .track-list-subject{font-weight:700;color:var(--ink)}
+.track-list-empty{padding:34px 22px;text-align:center}
+
+/* Signal Paths surfaces retain the existing ticket, chat and reopen controls. */
+.track-card-head { padding:22px 26px; gap:12px; }
+.track-card-title { font-weight:600; line-height:22px; }
+.track-card-sub { line-height:18px; overflow-wrap:anywhere; }
+.track-secure { gap:5px; white-space:nowrap; }
+.track-secure svg { color:var(--blue); }
+.track-form { padding:28px 26px; min-height:278px; }
+.track-page label { font-weight:600; margin-bottom:9px; }
+.track-page input { height:49px; border-radius:5px; background:var(--white); }
+.track-page input:focus, .track-page textarea:focus { outline:2px solid var(--blue); outline-offset:2px; box-shadow:none; }
+.track-page input::placeholder { color:var(--muted); opacity:.8; }
+.track-field { margin-bottom:21px; }
+.track-primary { display:flex; align-items:center; justify-content:center; gap:9px; height:auto; min-height:47px; padding:12px 16px; border-radius:5px; font-size:13px; line-height:20px; font-weight:600; box-shadow:none; }
+.track-primary svg { flex:none; }
+.track-helper { margin-top:13px; line-height:18px; }
+.track-result { border-top:0; background:var(--white); min-height:0; }
+.track-list { max-height:440px; }
+.track-panel { min-height:0; max-height:none; }
+.track-panel-timeline { overflow-y:auto; }
+.track-panel-chat { height:auto; flex:1 1 auto; overflow:hidden; }
+.track-page .ticket-chat-compose button { background:var(--blue); }
+.track-ticket-summary { background:var(--soft); }
+.track-ticket-summary > div { min-width:0; }
+.track-ticket-title { overflow-wrap:anywhere; }
+.track-badge { border-radius:3px; padding:4px 7px; font-weight:600; text-transform:none; white-space:normal; }
+.track-list-top { flex-wrap:wrap; }
+.track-list-top strong, .track-ticket-number { font-family:Consolas,monospace; font-size:12px; font-weight:600; overflow-wrap:anywhere; }
+.track-list-row { padding:20px 26px; }
+.track-list-foot { overflow-wrap:anywhere; }
+.track-tabs { gap:22px; padding:0 26px; }
+.track-tab { font-size:12px; font-weight:600; }
+.track-otp-actions { flex-wrap:wrap; }
+.track-page .track-code-input { letter-spacing:0; text-indent:0; font-size:24px; }
+.track-footer { min-height:60px; height:auto; gap:8px 20px; padding:16px 0; border-color:var(--line); line-height:18px; }
+.track-page.has-ticket { height:100svh; overflow:hidden; }
+.track-page.has-ticket .track-page-inner { height:100%; min-height:0; }
+.track-page.has-ticket .track-main { min-height:0; overflow:hidden; }
+.track-page.has-ticket .track-hero { height:100%; min-height:0; display:flex; flex-direction:column; align-items:center; }
+.track-page.has-ticket .track-header { min-height:64px; }
+.track-page.has-ticket .track-main { padding:12px 0 16px; }
+.track-page.has-ticket .track-kicker { font-size:9px; line-height:13px; }
+.track-page.has-ticket .track-hero h1 { font-size:28px; line-height:34px; margin:6px 0 4px; }
+.track-page.has-ticket .track-sub { font-size:12px; line-height:18px; margin-bottom:10px; }
+.track-page.has-ticket .tracker-card.has-result { width:600px; height:620px; max-width:calc(100vw - 32px); min-height:0; }
+.track-page.has-ticket .track-card-head { padding:14px 20px 10px; min-height:58px; }
+.track-page.has-ticket .track-card-title { font-size:15px; line-height:19px; }
+.track-page.has-ticket .track-card-sub { font-size:10px; line-height:14px; margin-top:1px; }
+.track-page.has-ticket .track-ticket-summary { padding:10px 20px; }
+.track-page.has-ticket .track-ticket-number { font-size:11px; }
+.track-page.has-ticket .track-ticket-title { font-size:11px; line-height:16px; margin-top:1px; }
+.track-page.has-ticket .track-reopen { padding:8px 20px; gap:6px 10px; }
+.track-page.has-ticket .track-reopen p { font-size:10px; line-height:1.35; }
+.track-page.has-ticket .track-resolution-actions { gap:6px; }
+.track-page.has-ticket .track-resolution-actions .track-reopen-button,
+.track-page.has-ticket .track-confirm-close,
+.track-page.has-ticket .track-close-cancel { min-height:30px; padding:5px 9px; font-size:10px; }
+.track-page.has-ticket .track-tabs { padding:0 20px; gap:20px; }
+.track-page.has-ticket .track-tab { padding:10px 0 8px; font-size:11px; }
+.track-page.has-ticket .track-card-note { padding:10px 18px; font-size:10px; line-height:15px; }
+.track-page.has-ticket .track-under-card { margin-top:8px; }
+.track-page.has-ticket .track-footer { min-height:40px; padding-top:8px; padding-bottom:8px; }
+@media(max-width:700px) {
+  .track-page-inner { padding:0 22px; }
+  .track-header { min-height:72px; height:auto; }
+  .track-status { display:none; }
+  .track-main { padding:35px 0 40px; }
+  .track-page.has-ticket .track-main { padding:24px 0 28px; }
+  .track-hero h1 { font-size:30px; line-height:38px; }
+  .track-sub { font-size:13px; margin-bottom:23px; }
+  .track-ticket-summary { align-items:flex-start; flex-wrap:wrap; }
+  .track-activity-date { width:100%; white-space:normal; }
+  .track-page.has-ticket .tracker-card.has-result { height:calc(100dvh - 220px); max-height:calc(100dvh - 220px); }
+  .track-page.has-ticket .tracker-card.has-result { width:100%; }
+}
+
+.track-page[data-theme="dark"] {
+  --blue:#87b3ff; --blue-dark:#a2c5ff; --ink:#edf1f3; --text:#dce3e7;
+  --muted:#a0afb9; --line:#3a454c; --line-strong:#4b5a64; --soft:#293239; --white:#21282d;
+  color-scheme:dark; background:#171b1e;
+}
+.track-header-tools { display:flex; align-items:center; gap:18px; }
+.track-theme-toggle, .track-signout-cancel {
+  width:32px; height:32px; flex:none; display:grid; place-items:center;
+  border:1px solid var(--line); border-radius:4px; color:var(--ink); background:var(--white); cursor:pointer;
+}
+.track-theme-toggle:hover, .track-signout-cancel:hover { background:var(--soft); }
+.track-card-heading > div { min-width:0; }
+.track-signout-control { display:flex; align-items:center; justify-content:flex-end; gap:4px; width:94px; min-height:32px; flex:none; }
+.track-card-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-width:0; }
+.track-signout { min-height:32px; padding:4px; font-size:12px; }
+.track-signout-cancel { width:26px; height:28px; border:0; }
+.track-signout:disabled, .track-signout-cancel:disabled { opacity:.6; cursor:wait; }
+.track-resolution-actions { display:flex; align-items:stretch; flex-wrap:wrap; gap:8px; width:100%; }
+.track-close-confirmation { display:flex; align-items:stretch; gap:6px; }
+.track-reopen p { flex-basis:100%; min-width:0; line-height:1.6; }
+.track-resolution-actions .track-reopen-button { border:1px solid var(--line-strong); background:var(--white); color:var(--text); font-weight:600; }
+.track-confirm-close { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:8px 10px; border:1px solid #a2d1b6; border-radius:5px; background:#eaf6ee; color:#226a43; font-size:12px; font-weight:600; cursor:pointer; }
+.track-confirm-close svg { flex:none; }
+.track-close-cancel { min-height:36px; padding:8px 12px; border:1px solid var(--line-strong); border-radius:5px; background:var(--white); color:var(--text); font-size:12px; font-weight:600; cursor:pointer; }
+.track-confirm-close:disabled, .track-reopen-button:disabled, .track-close-cancel:disabled { cursor:wait; opacity:.6; }
+.track-progress { margin:0; padding:0; list-style:none; }
+.track-progress-step { position:relative; min-height:48px; margin-left:9px; padding:0 0 18px 27px; border-left:1px solid var(--line); }
+.track-progress-step:last-child { min-height:24px; padding-bottom:0; border-color:transparent; }
+.track-progress-icon { position:absolute; top:0; left:-10px; width:19px; height:19px; display:grid; place-items:center; border:1px solid var(--line-strong); border-radius:50%; background:var(--white); color:var(--muted); }
+.track-progress-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px 10px; font-size:13px; line-height:20px; font-weight:600; color:var(--muted); }
+.track-progress-state { font-size:10px; line-height:16px; font-weight:400; }
+.track-progress-date { display:block; margin-top:3px; font-size:10px; line-height:16px; color:var(--muted); }
+.track-progress-step[data-state="complete"] { border-left-color:#9ecbb0; }
+.track-progress-step[data-state="complete"] .track-progress-heading { color:var(--ink); }
+.track-progress-step[data-state="complete"] .track-progress-icon { background:#edf8f1; border-color:#a9d2b9; color:#267044; }
+.track-progress-step[data-state="current"] .track-progress-heading { color:var(--blue); }
+.track-progress-step[data-state="current"] .track-progress-icon { border-color:var(--blue); color:var(--blue); }
+.track-progress-step[data-state="current"] .track-progress-icon svg { fill:currentColor; }
+.track-badge { --stage-ink:#536378; --stage-bg:#edf0f5; color:var(--stage-ink); background:var(--stage-bg); line-height:16px; }
+.track-badge[data-stage="ASSIGNED"] { --stage-ink:#525e81; --stage-bg:#edf0f8; }
+.track-badge[data-stage="STARTED"] { --stage-ink:#8b5c11; --stage-bg:#fff3d8; }
+.track-badge[data-stage="IN_PROGRESS"] { --stage-ink:#245cba; --stage-bg:#eaf2ff; }
+.track-badge[data-stage="RECTIFIED"] { --stage-ink:#8052a5; --stage-bg:#f5ecfb; }
+.track-badge[data-stage="TESTING"] { --stage-ink:#116e79; --stage-bg:#e5f5f6; }
+.track-badge[data-stage="RESOLVED"] { --stage-ink:#287046; --stage-bg:#e8f5ec; }
+.track-badge[data-stage="RESENT"], .track-badge[data-stage="REOPEN"] { --stage-ink:#a54753; --stage-bg:#fceef0; }
+.track-badge[data-stage="CLOSED"], .track-badge[data-stage="REJECTED"] { --stage-ink:#626c70; --stage-bg:#edf0f0; }
+.track-page[data-theme="dark"] .track-badge[data-stage="ASSIGNED"] { --stage-ink:#c0c9ec; --stage-bg:#343b50; }
+.track-page[data-theme="dark"] .track-badge[data-stage="STARTED"] { --stage-ink:#f2ce8b; --stage-bg:#4d3d24; }
+.track-page[data-theme="dark"] .track-badge[data-stage="IN_PROGRESS"] { --stage-ink:#adcaff; --stage-bg:#293e5b; }
+.track-page[data-theme="dark"] .track-badge[data-stage="RECTIFIED"] { --stage-ink:#ddbef4; --stage-bg:#493553; }
+.track-page[data-theme="dark"] .track-badge[data-stage="TESTING"] { --stage-ink:#a1dade; --stage-bg:#23454a; }
+.track-page[data-theme="dark"] .track-badge[data-stage="RESOLVED"] { --stage-ink:#a2dbb7; --stage-bg:#294836; }
+.track-page[data-theme="dark"] .track-badge[data-stage="RESENT"], .track-page[data-theme="dark"] .track-badge[data-stage="REOPEN"] { --stage-ink:#f4b4be; --stage-bg:#51323b; }
+.track-page[data-theme="dark"] .track-badge[data-stage="CLOSED"], .track-page[data-theme="dark"] .track-badge[data-stage="REJECTED"] { --stage-ink:#c2cbcf; --stage-bg:#394247; }
+.track-page[data-theme="dark"] .track-logo { background:#e0e9ee; color:#253139; }
+.track-page[data-theme="dark"] .track-primary, .track-page[data-theme="dark"] .track-reopen-actions button:last-child { color:#152439; }
+.track-page[data-theme="dark"] .track-reopen { background:var(--soft); }
+.track-page[data-theme="dark"] .track-reopen p, .track-page[data-theme="dark"] .track-reopen-actions button:first-child { color:var(--text); }
+.track-page[data-theme="dark"] .track-reopen textarea, .track-page[data-theme="dark"] .track-panel-timeline { background:var(--white); color:var(--ink); }
+.track-page[data-theme="dark"] .track-confirm-close { background:#294836; color:#afe2bd; border-color:#52785f; }
+.track-page[data-theme="dark"] .track-progress-step[data-state="complete"] { border-color:#416b51; }
+.track-page[data-theme="dark"] .track-progress-step[data-state="complete"] .track-progress-icon { background:#294836; border-color:#52785f; color:#afe2bd; }
+.track-page[data-theme="dark"] .track-progress-step:last-child { border-color:transparent; }
+.track-page[data-theme="dark"] .track-error, .track-page[data-theme="dark"] .track-reopen-error { background:#44282c; color:#ffc0c5; border-color:#855057; }
+.track-page[data-theme="dark"] .ticket-chat-meta, .track-page[data-theme="dark"] .ticket-chat-empty { color:var(--muted); }
+.track-page[data-theme="dark"] .ticket-chat-bubble { background:var(--soft); border-color:var(--line); color:var(--ink); }
+.track-page[data-theme="dark"] .ticket-chat-item.mine .ticket-chat-bubble { background:#293e5b; border-color:#455f80; }
+.track-page[data-theme="dark"] .ticket-chat-compose-wrap { border-color:var(--line); }
+.track-page[data-theme="dark"] .ticket-chat-compose input, .track-page[data-theme="dark"] .ticket-chat-edit input, .track-page[data-theme="dark"] .ticket-chat-locked { background:var(--white); color:var(--ink); border-color:var(--line-strong); }
+.track-page[data-theme="dark"] .ticket-chat-compose button { color:#152439; }
+.track-page[data-theme="dark"] .ticket-chat-quote { background:#1c252c; color:#bacad6; }
+.track-page[data-theme="dark"] .ticket-chat-reaction-list button { background:var(--soft); color:var(--ink); border-color:var(--line); }
+.track-page[data-theme="dark"] .ticket-chat-reply-preview, .track-page[data-theme="dark"] .ticket-chat-pinned { color:var(--text); border-color:var(--line); }
+body[data-track-theme="dark"] .ticket-chat-menu:not(.internal) { background:#21282d; color:#edf1f3; border-color:#4b5a64; }
+body[data-track-theme="dark"] .ticket-chat-menu:not(.internal) [role="menuitem"][data-highlighted] { background:#34434d; }
+body[data-track-theme="dark"] .ticket-chat-menu:not(.internal) .danger { color:#ffb4bd; }
+@media(max-width:420px) {
+  .track-header-tools { gap:8px; }
+  .track-brand { gap:8px; font-size:20px; }
+  .track-support { padding-left:9px; margin-left:0; }
+  .track-resolution-actions { flex-direction:column; }
+  .track-confirm-close, .track-resolution-actions .track-reopen-button { width:100%; }
+}
+@media(max-width:420px) {
+  .track-page-inner { padding:0 16px; }
+  .track-support { font-size:11px; }
+  .track-hero h1 { font-size:28px; line-height:36px; }
+  .track-card-head, .track-form, .track-panel, .track-list-row { padding-left:21px; padding-right:21px; }
+  .track-card-note { padding-left:16px; padding-right:16px; }
+  .track-page.has-ticket .tracker-card.has-result { height:calc(100dvh - 195px); max-height:calc(100dvh - 195px); }
+}

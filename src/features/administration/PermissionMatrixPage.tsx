@@ -9,17 +9,20 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardBody, Button, Input, Select, Skeleton } from "@/components/ui/primitives";
 import { ErrorState } from "@/components/feedback/states";
 import { setSubmodule, submoduleChanged, submoduleChanges, submoduleState, toGrants, type Grants } from "./submoduleGrants";
+import { useCompanies } from "@/hooks/useMasters";
 
 const moduleName = (name: string) => name.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 export function PermissionMatrixPage() {
   const queryClient = useQueryClient();
-  const { can, refresh } = useAuth();
+  const { can, refresh, user } = useAuth();
+  const companies = useCompanies();
+  const [company, setCompany] = useState("");
   const canManage = can("admin.permission.manage");
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["permission-matrix"], queryFn: roleApi.matrix });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["permission-matrix", company], queryFn: () => roleApi.matrix(company || undefined) });
   const [draft, setDraft] = useState<Grants>({});
   const original = useMemo(() => toGrants(data), [data]);
   useEffect(() => setDraft(original), [original]);
@@ -29,7 +32,7 @@ export function PermissionMatrixPage() {
     mutationFn: async () => {
       if (!data || !canManage) return;
       for (const role of dirtyRoles) {
-        await roleApi.updateSubmodulePermissions(role.id, submoduleChanges(data, original, draft, role.code));
+        await roleApi.updateSubmodulePermissions(role.id, submoduleChanges(data, original, draft, role.code), company || undefined);
       }
     },
     onSuccess: async () => {
@@ -53,10 +56,14 @@ export function PermissionMatrixPage() {
     <PageHeader title="Permission Management"
       description="Choose submodule access for each role. Selected submodules include all their actions."
       breadcrumbs={[{ label: "Administration" }, { label: "Permissions" }]}
-      actions={canManage ? <>
+      actions={canManage ? <div className="flex max-w-[calc(100vw-3rem)] flex-wrap items-center gap-2">
+        {user?.is_superuser ? <Select aria-label="Permission company" className="w-[220px] max-w-full" value={company}
+          disabled={save.isPending || dirtyRoles.length > 0} onChange={(event) => setCompany(event.target.value)}>
+          <option value="">Global defaults</option>{(companies.data ?? []).map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+        </Select> : null}
         <Button variant="outline" size="sm" onClick={() => setDraft(original)} disabled={!dirtyRoles.length || save.isPending}><RotateCcw /> Reset</Button>
         <Button size="sm" onClick={() => save.mutate()} disabled={!dirtyRoles.length} loading={save.isPending}><Save /> Save Changes</Button>
-      </> : undefined} />
+      </div> : undefined} />
 
     {isError ? <Card><ErrorState onRetry={() => void refetch()} /></Card> : isLoading ? <Card className="p-4"><Skeleton className="h-64" /></Card> : <>
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -72,8 +79,7 @@ export function PermissionMatrixPage() {
           </Select>
         </div>
         <div className="border-b border-[var(--border)] bg-[var(--muted)]/30 px-3 py-2 text-[12px] text-[var(--muted-foreground)]">
-          {canManage ? "Mixed checkboxes indicate existing partial access. Select one to grant all actions in that submodule." : "You have read-only access to this matrix."}
-          <span className="block mt-1">Workflow and ownership restrictions still apply. Admin role and permission management access is protected.</span>
+          {data?.company?.name ?? "Global defaults"}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px] border-collapse">
@@ -94,9 +100,9 @@ export function PermissionMatrixPage() {
                   {(data?.roles ?? []).map((role) => {
                     const state = submoduleState(submodule, draft, role.code);
                     const changed = submoduleChanged(submodule, original, draft, role.code);
-                    const protectedRole = submodule.protected_roles.includes(role.code);
+                    const protectedRole = submodule.protected_roles.includes(role.code) || role.can_manage === false;
                     return <td key={role.code} className="ztable-cell text-center">
-                      <span className="inline-flex items-center justify-center gap-2" title={protectedRole ? "Admin must retain this submodule." : state.mixed ? "Existing partial access. Selecting grants all submodule actions." : undefined}>
+                      <span className="inline-flex items-center justify-center gap-2" title={protectedRole ? "Only Super Admin can change Admin access." : undefined}>
                         <input type="checkbox" className={`size-4 cursor-pointer disabled:cursor-not-allowed ${changed ? "accent-[var(--warning)]" : "accent-[var(--primary)]"}`}
                           ref={(element) => { if (element) element.indeterminate = state.mixed; }}
                           checked={state.checked} aria-checked={state.mixed ? "mixed" : state.checked}

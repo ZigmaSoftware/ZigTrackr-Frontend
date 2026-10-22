@@ -57,12 +57,13 @@ export function BugFormPage() {
   const moduleId = watch("module");
 
   const projects = useProjects();
+  const company = projects.data?.find((project) => project.id === projectId)?.company_id as string | undefined;
   const modules = useModules(projectId);
   const submodules = useSubmodules(moduleId);
-  const priorities = usePriorities();
-  const severities = useSeverities();
-  const departments = useDepartments();
-  const sites = useSites();
+  const priorities = usePriorities(company);
+  const severities = useSeverities(company);
+  const departments = useDepartments(company);
+  const sites = useSites(company);
 
   /* Clear the child whenever the parent changes, so a stale module from a
      previous project can never be submitted. */

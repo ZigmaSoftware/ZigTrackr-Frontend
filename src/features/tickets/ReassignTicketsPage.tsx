@@ -12,7 +12,7 @@ import { Modal } from "@/components/feedback/Modal";
 import { ErrorState } from "@/components/feedback/states";
 import { Button, Card, IconButton, Input, Label, Select, Textarea } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
-import { useAssignableUsers, useModules, usePriorities, useProjects, useSeverities, useSubmodules } from "@/hooks/useMasters";
+import { useAssignableUsers } from "@/hooks/useMasters";
 import type { SupportTicketRow } from "@/types";
 import { DescriptionPreview, RequestPreview, TicketStatusBadge } from "@/features/tickets/TicketTableCells";
 
@@ -56,11 +56,6 @@ export function ReassignTicketsPage() {
   const [blocked, setBlocked] = useState<SupportTicketRow | null>(null);
   const [owner, setOwner] = useState("");
   const [reason, setReason] = useState("");
-  const [project, setProject] = useState("");
-  const [module, setModule] = useState("");
-  const [submodule, setSubmodule] = useState("");
-  const [priority, setPriority] = useState("");
-  const [severity, setSeverity] = useState("");
   const params = { submodule: "reassign", reassignable: true, limit: pageSize, offset: (page - 1) * pageSize, search, ordering,
     ...(ticketType ? { ticket_type: ticketType } : {}),
     ...(source ? { source } : {}), ...(status ? { status } : {}) };
@@ -69,19 +64,9 @@ export function ReassignTicketsPage() {
     queryFn: () => ticketApi.list(params),
   });
   const users = useAssignableUsers(["DEVELOPER"]);
-  const projects = useProjects();
-  const modules = useModules(project);
-  const submodules = useSubmodules(module);
-  const priorities = usePriorities();
-  const severities = useSeverities();
   const reassign = useMutation({
     mutationFn: () => ticketApi.reassignWithReason(selected!.id, {
       owner, reason: reason.trim(),
-      ...(project ? { project } : {}),
-      ...(module ? { module } : {}),
-      ...(submodule ? { submodule } : {}),
-      ...(priority ? { priority } : {}),
-      ...(selected?.ticket_type === "BUG" && severity ? { severity } : {}),
     }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all });
@@ -99,11 +84,6 @@ export function ReassignTicketsPage() {
     setSelected(row);
     setOwner("");
     setReason("");
-    setProject(row.project?.id ?? "");
-    setModule(row.module?.id ?? "");
-    setSubmodule("");
-    setPriority(row.priority?.id ?? "");
-    setSeverity("");
   }
 
   return (
@@ -164,28 +144,8 @@ export function ReassignTicketsPage() {
             <div><Label htmlFor="new-owner" required>New assignee</Label>
               <Select id="new-owner" value={owner} onChange={(event) => setOwner(event.target.value)}>
                 <option value="">Select developer</option>
-                {(users.data ?? []).filter((user) => user.id !== selected.owner?.id).map((user) =>
+                {(users.data ?? []).filter((user) => user.id !== selected.owner?.id && user.company_id === selected.company?.id).map((user) =>
                   <option key={user.id} value={user.id}>{user.name}</option>)}</Select></div>
-            <div><Label htmlFor="new-project">Project</Label><Select id="new-project" value={project}
-              onChange={(event) => { setProject(event.target.value); setModule(""); setSubmodule(""); }}>
-              <option value="">Keep current</option>{(projects.data ?? []).map((row) =>
-                <option key={row.id} value={row.id}>{row.name}</option>)}</Select></div>
-            <div><Label htmlFor="new-module">Module</Label><Select id="new-module" value={module}
-              onChange={(event) => { setModule(event.target.value); setSubmodule(""); }}>
-              <option value="">Keep current</option>{(modules.data ?? []).map((row) =>
-                <option key={row.id} value={row.id}>{row.name}</option>)}</Select></div>
-            <div><Label htmlFor="new-submodule">Submodule</Label><Select id="new-submodule" value={submodule}
-              onChange={(event) => setSubmodule(event.target.value)}>
-              <option value="">Keep current</option>{(submodules.data ?? []).map((row) =>
-                <option key={row.id} value={row.id}>{row.name}</option>)}</Select></div>
-            <div><Label htmlFor="new-priority">Priority</Label><Select id="new-priority" value={priority}
-              onChange={(event) => setPriority(event.target.value)}>
-              <option value="">Keep current</option>{(priorities.data ?? []).map((row) =>
-                <option key={row.id} value={row.id}>{row.name}</option>)}</Select></div>
-            {selected.ticket_type === "BUG" ? <div><Label htmlFor="new-severity">Severity</Label>
-              <Select id="new-severity" value={severity} onChange={(event) => setSeverity(event.target.value)}>
-                <option value="">Keep current</option>{(severities.data ?? []).map((row) =>
-                  <option key={row.id} value={row.id}>{row.name}</option>)}</Select></div> : null}
             <div className="sm:col-span-2"><Label htmlFor="reassign-reason" required>Reassignment reason</Label>
               <Textarea id="reassign-reason" value={reason} onChange={(event) => setReason(event.target.value)} /></div>
           </div>

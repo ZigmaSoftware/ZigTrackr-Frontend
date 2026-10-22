@@ -9,7 +9,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
 import { PageHeader } from "@/components/common/PageHeader";
 import {
-  Button, Card, IconButton, Input, Label,
+  Button, Card, IconButton, Input, Label, Select,
 } from "@/components/ui/primitives";
 import { Modal, ConfirmDialog } from "@/components/feedback/Modal";
 import { DataTable, TruncatedCell, type Column } from "@/components/tables/DataTable";
@@ -17,6 +17,7 @@ import { Pagination } from "@/components/tables/Pagination";
 import { ErrorState } from "@/components/feedback/states";
 import { formatDate } from "@/lib/dates";
 import type { MasterRow } from "@/types";
+import { useCompanies } from "@/hooks/useMasters";
 
 /* ---- USER ADMINISTRATION (spec 16) ----
    Create/edit/deactivate/reactivate/reset-password. Every write goes through
@@ -34,6 +35,7 @@ const ROLE_CODES = ["ADMIN", "TEAM_LEAD", "DEVELOPER", "TESTER", "REPORTER", "MA
 type FormMode = "create" | "edit" | null;
 
 interface FormValues {
+  company: string;
   username: string;
   email: string;
   full_name: string;
@@ -44,12 +46,14 @@ interface FormValues {
 }
 
 const EMPTY_FORM: FormValues = {
+  company: "",
   username: "", email: "", full_name: "", employee_code: "", phone: "",
   password: "", roles: [],
 };
 
 export function UserManagementPage() {
   const { can, user: currentUser } = useAuth();
+  const companies = useCompanies();
   const queryClient = useQueryClient();
   const { filters, setFilters } = useUrlFilters({ ordering: "full_name" });
 
@@ -141,7 +145,7 @@ export function UserManagementPage() {
   });
 
   function openCreate() {
-    setValues(EMPTY_FORM);
+    setValues({ ...EMPTY_FORM, company: currentUser?.company?.id ?? "" });
     setErrors({});
     setEditingRow(null);
     setFormMode("create");
@@ -150,6 +154,7 @@ export function UserManagementPage() {
   function openEdit(row: MasterRow) {
     const roles = (row.roles as RoleRef[] | undefined) ?? [];
     setValues({
+      company: String(row.company_id ?? ""),
       username: String(row.username ?? ""),
       email: String(row.email ?? ""),
       full_name: String(row.full_name ?? row.name ?? ""),
@@ -185,11 +190,13 @@ export function UserManagementPage() {
     if (formMode === "create" && !values.password.trim()) {
       nextErrors.password = "A password is required when creating a user.";
     }
+    if (formMode === "create" && !values.company) nextErrors.company = "Select a company.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
     if (formMode === "create") {
       create.mutate({
+        company: values.company,
         username: values.username,
         email: values.email || undefined,
         full_name: values.full_name || undefined,
@@ -213,6 +220,7 @@ export function UserManagementPage() {
   }
 
   const columns = useMemo<Column<MasterRow>[]>(() => [
+    { key: "company", header: "Company", cell: (row) => String(row.company_name ?? "Super Admin") },
     {
       key: "name", header: "Name", sortable: true,
       cell: (row) => (
@@ -287,6 +295,10 @@ export function UserManagementPage() {
       key: "actions", header: "", width: "w-32", align: "right",
       cell: (row) => {
         const isSelf = row.id === currentUser?.id;
+        const protectedAccount = !currentUser?.is_superuser && (
+          row.is_superuser || ((row.roles as RoleRef[] | undefined) ?? []).some((role) => role.code === "ADMIN")
+        );
+        if (protectedAccount) return null;
         return (
           <div className="flex justify-end gap-0.5">
             {can("admin.user.edit") ? (
@@ -388,6 +400,14 @@ export function UserManagementPage() {
         }
       >
         <div className="grid gap-3.5 sm:grid-cols-2">
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="u-company" required>Company</Label>
+            <Select id="u-company" disabled={formMode === "edit" || !currentUser?.is_superuser}
+              value={values.company} onChange={(event) => setValues((value) => ({ ...value, company: event.target.value }))}>
+              <option value="">Select company</option>{(companies.data ?? []).map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+            </Select>
+            {errors.company ? <p className="text-xs text-[var(--destructive)]">{errors.company}</p> : null}
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="u-username" required>Username</Label>
             <Input
@@ -439,6 +459,7 @@ export function UserManagementPage() {
             </p>
             <div className="flex flex-wrap gap-3 pt-1">
               {(roleOptions.data ?? ROLE_CODES.map((code) => ({ id: code, code, name: code }) as RoleOption))
+                .filter((role) => currentUser?.is_superuser || role.code !== "ADMIN")
                 .map((role) => (
                 <label key={role.code} className="flex cursor-pointer items-center gap-1.5 text-[13px]">
                   <input

@@ -9,7 +9,7 @@ import { formatDateTime } from "@/lib/dates";
 import { formatBytes } from "@/lib/utils";
 
 /** Shared requester-only file list for the ticket tab and unassigned queue. */
-export function EmailAttachmentList({ ticketId }: { ticketId: string }) {
+export function EmailAttachmentList({ ticketId, compact = false }: { ticketId: string; compact?: boolean }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.tickets.attachments(ticketId),
     queryFn: () => ticketApi.emailAttachments(ticketId),
@@ -17,7 +17,7 @@ export function EmailAttachmentList({ ticketId }: { ticketId: string }) {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-[13px] font-semibold">Attachments ({data?.length ?? 0})</h3>
+      {!compact ? <h3 className="text-[13px] font-semibold">Attachments ({data?.length ?? 0})</h3> : null}
       {isLoading ? (
         <div className="space-y-2">
           {[0, 1].map((index) => <Skeleton key={index} className="h-12" />)}
@@ -28,7 +28,7 @@ export function EmailAttachmentList({ ticketId }: { ticketId: string }) {
         <EmptyState icon={<Paperclip className="size-8" aria-hidden />} title="No email attachments"
           description="Files sent by the requester will appear here." />
       ) : (
-        <ul className="divide-y divide-[var(--border)]">
+        <ul className={compact ? "focus-review-file-list" : "divide-y divide-[var(--border)]"}>
           {data.map((attachment) => (
             <li key={attachment.id} className="flex items-start gap-3 py-3">
               <span className="grid size-8 shrink-0 place-items-center rounded bg-[var(--muted)]">

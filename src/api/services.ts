@@ -1,8 +1,10 @@
 import { del, get, patch, post, api, withAuthSessionLock } from "@/api/client";
 import type {
-  ActivityRow, Attachment, BugDetail, BugListRow, BugUpdateRow, ChartDatum,
+  ActivityRow, ApiEnvelope, Attachment, BugDetail, BugListRow, BugUpdateRow, ChartDatum,
   DashboardKpis, MasterRow, Paginated, SessionUser, SidebarCounts,
-  PublicTicketStatus, PublicTrackTicket, TicketChatMessage, TicketChatInboxRow, SupportTicketRow, TicketAttachment, TicketTimelineEvent,
+  PublicTicketStatus, PublicTrackTicket,
+  PublicTrackSession,
+  NotificationRow, TicketChatMessage, TicketChatInboxRow, SupportTicketRow, TicketAttachment, TicketTimelineEvent,
   TimelineEvent, UserLite, WorkloadRow,
   SupportTicketDetail,
   PermissionMatrix,
@@ -68,7 +70,8 @@ export const ticketApi = {
   chatInbox: (params: { page: number; limit: number; filter: string; search: string }) =>
     get<Paginated<TicketChatInboxRow>>("/tickets/chat/inbox/", params),
   list: (params: Record<string, unknown>) =>
-    get<Paginated<SupportTicketRow>>("/tickets/", params),
+    api.get<ApiEnvelope<Paginated<SupportTicketRow>>>("/tickets/", { params, paramsSerializer: { indexes: null } })
+      .then((response) => response.data.data),
   detail: (id: string) => get<SupportTicketDetail>(`/tickets/${id}/`),
   delete: (id: string, payload: TicketRemovalPayload) =>
     del<TicketRemovalResult>(`/tickets/${id}/`, payload),
@@ -107,25 +110,43 @@ export const ticketApi = {
   chatReceipts: (id: string, message_ids: string[], status: "delivered" | "read") =>
     post<TicketChatMessage[]>(`/tickets/${id}/chat/receipts/`, { message_ids, status }),
 
-  workTransition: (id: string, payload: { to_status: string; remarks?: string; root_cause?: string; resolution?: string }) =>
+  workDetails: (id: string, payload: Record<string, unknown>) =>
+    patch<SupportTicketDetail>(`/tickets/${id}/work-details/`, payload),
+  workTransition: (id: string, payload: { to_status: string; remarks?: string; root_cause?: string; resolution?: string; details?: Record<string, unknown> }) =>
     post<SupportTicketDetail>(`/tickets/${id}/work-transition/`, payload),
 
   /** Unauthenticated: reached from the link in the assignment email. */
   publicLookup: (payload: { ticket_no: string; email: string }) =>
     post<PublicTicketStatus>("/tickets/public/lookup/", payload),
-  publicVerify: (payload: { ticket_no: string; email: string }) =>
-    post<PublicTrackTicket>("/tickets/public/track/verify/", payload),
-  publicTicket: () => get<PublicTrackTicket>("/tickets/public/track/ticket/"),
-  publicActivity: () => get<TicketTimelineEvent[]>("/tickets/public/track/activity/"),
-  publicChat: () => get<TicketChatMessage[]>("/tickets/public/track/chat/messages/"),
-  publicSendChat: (message: string, reply_to?: string) =>
-    post<TicketChatMessage>("/tickets/public/track/chat/messages/", { message, reply_to }),
-  publicChatMessageAction: (messageId: string, payload: { action: string; message?: string; emoji?: string }) =>
-    post<TicketChatMessage>(`/tickets/public/track/chat/messages/${messageId}/`, payload),
-  publicChatReceipts: (message_ids: string[], status: "delivered" | "read") =>
-    post<TicketChatMessage[]>("/tickets/public/track/chat/receipts/", { message_ids, status }),
-  publicReopen: (reason: string) =>
-    post<PublicTrackTicket>("/tickets/public/track/reopen/", { reason }),
+  /** Step 1: emails a code. Answers the same way whether or not the address
+   *  owns anything, so the caller must not infer from a success response. */
+  publicRequestOtp: (payload: { email: string }) =>
+    post<{ otp_sent: boolean }>("/tickets/public/track/request-otp/", payload),
+  /** Step 2: the only call that opens a tracking session. Returns every
+   *  ticket the verified address owns. */
+  publicVerifyOtp: (payload: { email: string; code: string }) =>
+    post<PublicTrackSession>("/tickets/public/track/verify-otp/", payload),
+  /** Re-reads the signed-in address's tickets, e.g. after a refresh. */
+  publicTickets: () => get<PublicTrackSession>("/tickets/public/track/tickets/"),
+  /* Ticket-scoped calls carry ticket_no. The server never trusts it alone --
+     it re-checks that the signed-in address owns that ticket. */
+  publicTicket: (ticket_no: string) =>
+    get<PublicTrackTicket>("/tickets/public/track/ticket/", { ticket_no }),
+  publicActivity: (ticket_no: string) =>
+    get<TicketTimelineEvent[]>("/tickets/public/track/activity/", { ticket_no }),
+  publicChat: (ticket_no: string) =>
+    get<TicketChatMessage[]>("/tickets/public/track/chat/messages/", { ticket_no }),
+  publicSendChat: (ticket_no: string, message: string, reply_to?: string) =>
+    post<TicketChatMessage>("/tickets/public/track/chat/messages/", { ticket_no, message, reply_to }),
+  publicChatMessageAction: (ticket_no: string, messageId: string, payload: { action: string; message?: string; emoji?: string }) =>
+    post<TicketChatMessage>(`/tickets/public/track/chat/messages/${messageId}/`, { ticket_no, ...payload }),
+  publicChatReceipts: (ticket_no: string, message_ids: string[], status: "delivered" | "read") =>
+    post<TicketChatMessage[]>("/tickets/public/track/chat/receipts/", { ticket_no, message_ids, status }),
+  publicReopen: (ticket_no: string, reason: string) =>
+    post<PublicTrackTicket>("/tickets/public/track/reopen/", { ticket_no, reason }),
+  publicClose: (ticket_no: string) =>
+    post<PublicTrackTicket>("/tickets/public/track/close/", { ticket_no }),
+  publicSignout: () => post<null>("/tickets/public/track/signout/"),
 
   attachments: (id: string) =>
     get<TicketAttachment[]>(`/tickets/${id}/attachments/`),
@@ -175,14 +196,14 @@ export const userApi = {
 };
 
 export const roleApi = {
-  list: () => get<Paginated<RoleRow>>("/roles/"),
-  update: (id: string, payload: Partial<Pick<RoleRow, "name" | "description" | "is_active">>) =>
-    patch<RoleRow>(`/roles/${id}/`, payload),
-  matrix: () => get<PermissionMatrix>("/permissions/matrix/"),
+  list: (company?: string) => get<Paginated<RoleRow>>("/roles/", company ? { company } : undefined),
+  update: (id: string, payload: Partial<Pick<RoleRow, "name" | "description" | "is_active">>, company?: string) =>
+    patch<RoleRow>(`/roles/${id}/${company ? `?company=${encodeURIComponent(company)}` : ""}`, payload),
+  matrix: (company?: string) => get<PermissionMatrix>("/permissions/matrix/", company ? { company } : undefined),
   updatePermissions: (id: string, permissions: string[]) =>
     api.put("/roles/" + id + "/permissions/", { permissions }).then((r) => r.data.data as PermissionMatrix),
-  updateSubmodulePermissions: (id: string, submodule_changes: { key: string; enabled: boolean }[]) =>
-    api.put(`/roles/${id}/permissions/`, { submodule_changes }).then((r) => r.data.data as PermissionMatrix),
+  updateSubmodulePermissions: (id: string, submodule_changes: { key: string; enabled: boolean }[], company?: string) =>
+    api.put(`/roles/${id}/permissions/`, { submodule_changes }, { params: company ? { company } : undefined }).then((r) => r.data.data as PermissionMatrix),
 };
 
 /* ---- DASHBOARD ---- */
@@ -212,7 +233,8 @@ export const reportApi = {
 
 /* ---- NOTIFICATIONS ---- */
 export const notificationApi = {
-  list: (params?: Record<string, unknown>) => get<Paginated<unknown>>("/notifications/", params),
+  list: (params?: Record<string, unknown>) =>
+    get<Paginated<NotificationRow>>("/notifications/", params),
   unreadCount: () => get<{ count: number }>("/notifications/unread_count/"),
   markRead: (id: string) => post<unknown>(`/notifications/${id}/read/`),
   markAllRead: () => post<{ updated: number }>("/notifications/read-all/"),

@@ -375,6 +375,348 @@
   }
 }
 
+
+/* ---- NOTIFICATION BELL + PANEL ----
+   The shake is driven by .zt-bell--unread, which the component applies only
+   while the unread count is above zero. Opening the panel does not stop it;
+   reading the last item does. The global prefers-reduced-motion rule above
+   already neutralises the animation, so no separate guard is needed. */
+.zt-bell {
+  position: relative; display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: var(--radius-md);
+  border: 1px solid transparent; background: transparent;
+  color: var(--muted-foreground); cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.zt-bell:hover { background: var(--muted); color: var(--foreground); }
+.zt-bell--unread { color: var(--foreground); }
+/* A short wobble occupying the first ~12% of the cycle, then stillness --
+   a pulse rather than a permanent shake, which is unbearable peripherally. */
+.zt-bell--unread svg { animation: zt-bell-shake 4.5s ease-in-out infinite; transform-origin: 50% 2px; }
+@keyframes zt-bell-shake {
+  0%, 12%, 100% { transform: rotate(0deg); }
+  2%  { transform: rotate(-13deg); }
+  4%  { transform: rotate(11deg); }
+  6%  { transform: rotate(-9deg); }
+  8%  { transform: rotate(7deg); }
+  10% { transform: rotate(-4deg); }
+}
+.zt-bell__badge {
+  position: absolute; top: 1px; right: 1px;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  display: grid; place-items: center; border-radius: 999px;
+  background: var(--destructive); color: #fff;
+  font-size: 10px; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.zt-notif-panel {
+  width: 370px; max-width: calc(100vw - 24px);
+  background: var(--card); color: var(--foreground);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: 0 22px 56px -20px rgb(15 23 42 / 0.35);
+  overflow: hidden; z-index: 60;
+}
+.zt-notif-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13.5px;
+}
+.zt-notif-head button {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 0; background: transparent; color: var(--primary);
+  font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.zt-notif-heading { display: inline-flex; align-items: center; gap: 7px; }
+.zt-notif-count {
+  font-size: 11px; font-weight: 800; line-height: 1;
+  background: var(--primary); color: #fff;
+  border-radius: 999px; padding: 3px 7px;
+  font-variant-numeric: tabular-nums;
+}
+/* Segmented control rather than underlined tabs -- it reads as a filter
+   over one list, which is what it is. */
+.zt-notif-seg {
+  display: flex; gap: 4px; margin: 0 14px 8px;
+  background: var(--muted); padding: 3px; border-radius: 9px;
+}
+.zt-notif-seg button {
+  flex: 1; border: 0; background: transparent; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 700;
+  color: var(--muted-foreground); padding: 6px; border-radius: 7px;
+  transition: background 140ms ease, color 140ms ease;
+}
+.zt-notif-seg button.on {
+  background: var(--card); color: var(--foreground);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.12);
+}
+.zt-notif-day {
+  margin: 0; padding: 10px 14px 4px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--muted-foreground);
+}
+.zt-notif-list { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
+/* The row holds two actions: the body marks read in place, the arrow
+   navigates. Separate buttons rather than one nested inside the other --
+   nested buttons are invalid HTML and unreachable by keyboard. */
+.zt-notif-row { display: flex; align-items: stretch; width: 100%; }
+.zt-notif-row + .zt-notif-row { border-top: 1px solid var(--border); }
+.zt-notif-row:hover { background: var(--muted); }
+.zt-notif-main {
+  display: flex; gap: 10px; align-items: flex-start; flex: 1; min-width: 0;
+  padding: 11px 4px 11px 14px; border: 0; background: transparent;
+  text-align: left; cursor: pointer; font: inherit; color: inherit;
+}
+.zt-notif-main:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+/* The button spans the row height for a comfortable hit area, but the
+   visible hover is a small circle -- filling the whole stretched button
+   produced a tall slab of colour next to a two-line row. The inner span is
+   what gets painted. */
+.zt-notif-go {
+  flex: none; width: 40px; border: 0; background: transparent;
+  display: grid; place-items: center; cursor: pointer;
+  color: var(--muted-foreground); padding: 0;
+}
+.zt-notif-go span {
+  display: grid; place-items: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+}
+.zt-notif-go:hover span {
+  background: var(--primary); color: #fff; transform: translateX(1px);
+}
+.zt-notif-go:focus-visible { outline: none; }
+.zt-notif-go:focus-visible span { outline: 2px solid var(--ring); outline-offset: 2px; }
+.zt-notif-row.unread { background: color-mix(in oklab, var(--primary) 7%, var(--card)); }
+.zt-notif-row.unread:hover { background: color-mix(in oklab, var(--primary) 12%, var(--card)); }
+.zt-notif-row.unread .zt-notif-go:hover span { background: var(--primary); color: #fff; }
+.zt-notif-icon {
+  flex: none; width: 28px; height: 28px; border-radius: 8px;
+  display: grid; place-items: center;
+}
+.zt-notif-icon--default { background: var(--status-assigned-bg); color: var(--status-assigned-fg); }
+.zt-notif-icon--danger  { background: var(--priority-critical-bg); color: var(--priority-critical-fg); }
+.zt-notif-icon--testing { background: var(--status-testing-bg); color: var(--status-testing-fg); }
+.zt-notif-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.zt-notif-title { font-size: 12.8px; font-weight: 600; line-height: 1.4; }
+.zt-notif-text {
+  font-size: 12px; color: var(--muted-foreground); line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.zt-notif-time { font-size: 11px; color: var(--muted-foreground); }
+.zt-notif-dot {
+  flex: none; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--primary); margin-top: 6px;
+}
+.zt-notif-empty {
+  margin: 0; padding: 30px 14px; text-align: center;
+  font-size: 12.5px; color: var(--muted-foreground);
+}
+.zt-notif-foot {
+  padding: 10px; text-align: center; border-top: 1px solid var(--border);
+}
+.zt-notif-foot button {
+  border: 0; background: transparent; color: var(--primary);
+  font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+
+
+/* ---- NOTIFICATION TOASTS ----
+   Two shapes: a compact pill for single-fact events (assignment, status),
+   and a chat card for messages where the sender and words are the point.
+   Rendered via toast.custom, so sonner's own card chrome is bypassed. */
+.zt-toast {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); color: var(--foreground);
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 36px -14px rgb(15 23 42 / 0.42);
+  font-family: inherit;
+}
+.zt-toast--pill {
+  padding: 10px 10px 10px 14px; border-radius: 999px;
+  width: max-content; max-width: min(460px, calc(100vw - 32px));
+}
+.zt-toast__dot {
+  flex: none; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--primary);
+}
+.zt-toast--pill.urgent .zt-toast__dot { background: var(--destructive); }
+.zt-toast--pill.urgent { border-color: color-mix(in oklab, var(--destructive) 40%, var(--border)); }
+.zt-toast__title {
+  font-size: 13px; font-weight: 650; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.zt-toast__go {
+  flex: none; width: 28px; height: 28px; border: 0; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  background: var(--muted); color: var(--foreground);
+  transition: background 140ms ease, color 140ms ease;
+}
+.zt-toast__go:hover { background: var(--primary); color: #fff; }
+
+.zt-toast--chat {
+  align-items: flex-start; padding: 13px; border-radius: 16px;
+  width: min(380px, calc(100vw - 32px)); cursor: pointer; text-align: left;
+}
+.zt-toast--chat:hover { border-color: var(--primary); }
+.zt-toast__avatar {
+  flex: none; width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: linear-gradient(140deg, var(--brand-400), var(--brand-600));
+  color: #fff; font-size: 13px; font-weight: 800;
+}
+.zt-toast__chat-body { min-width: 0; }
+.zt-toast__sender { margin: 0; font-size: 13px; font-weight: 700; }
+.zt-toast__quote {
+  margin: 3px 0 0; padding-left: 9px; font-size: 12.5px; line-height: 1.45;
+  color: var(--muted-foreground); border-left: 2px solid var(--border);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.zt-toast__meta { margin: 7px 0 0; font-size: 11px; color: var(--muted-foreground); }
+
+
+/* ---- AGING TIMELINE (reports) ----
+   The reference design's structure -- cream header band, serif heading, KPI
+   figures opposite, a period rail down the left and a connector line through
+   the events -- drawn with ZigTrackr tokens rather than its own hex values,
+   so the whole thing inverts correctly in dark mode. */
+.zt-aging {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.zt-aging__head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 18px; padding: 22px 26px; border-bottom: 1px solid var(--border);
+  /* The reference's cream band, expressed as a warm tint of the surface so
+     it darkens with the theme instead of staying cream. */
+  background: color-mix(in oklab, #f59e0b 6%, var(--card));
+}
+.zt-aging__eyebrow {
+  margin: 0 0 6px; font-size: 10px; font-weight: 800;
+  letter-spacing: .11em; text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.zt-aging__title {
+  margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.04em;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.zt-aging__lede { margin: 5px 0 0; font-size: 12px; color: var(--muted-foreground); }
+.zt-aging__kpis { display: flex; gap: 24px; flex: none; }
+.zt-aging__kpi { text-align: right; }
+.zt-aging__kpi strong {
+  display: block; font-size: 21px; font-weight: 700; letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+.zt-aging__kpi--warn { color: #c2410c; }
+.zt-aging__kpi small { display: block; font-size: 10px; color: var(--muted-foreground); }
+
+.zt-aging__period { display: grid; grid-template-columns: 158px minmax(0, 1fr); }
+.zt-aging__period + .zt-aging__period { border-top: 1px solid var(--border); }
+.zt-aging__rail {
+  padding: 18px 20px; border-right: 1px solid var(--border);
+  background: color-mix(in oklab, var(--muted) 55%, var(--card));
+}
+.zt-aging__rail strong { display: block; font-size: 12.5px; font-weight: 700; }
+.zt-aging__rail small { display: block; font-size: 10.5px; color: var(--muted-foreground); margin-top: 4px; }
+.zt-aging__rail-count { font-weight: 700; }
+
+.zt-aging__events { list-style: none; margin: 0; padding: 12px 24px 14px; }
+.zt-aging__event {
+  position: relative; display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 14px; padding: 12px 0 14px;
+}
+/* The connector line, stopping short of the last dot. */
+.zt-aging__event:not(:last-child)::before {
+  content: ""; position: absolute; left: 9px; top: 26px; bottom: -4px;
+  width: 2px; background: var(--border);
+}
+.zt-aging__dot {
+  width: 18px; height: 18px; border-radius: 50%; margin-top: 4px; z-index: 1;
+  background: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 20%, transparent);
+}
+.zt-aging__dot.stale {
+  background: #ea9a4f;
+  box-shadow: 0 0 0 4px color-mix(in oklab, #ea9a4f 24%, transparent);
+}
+.zt-aging__body { min-width: 0; }
+.zt-aging__top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.zt-aging__subject {
+  border: 0; background: transparent; padding: 0; cursor: pointer;
+  font: inherit; font-size: 12.8px; font-weight: 700; color: var(--foreground);
+  text-align: left; overflow-wrap: anywhere;
+}
+.zt-aging__subject:hover { color: var(--primary); text-decoration: underline; }
+.zt-aging__ref {
+  font-size: 10.5px; font-weight: 700; color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.zt-aging__tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; border-radius: 5px; padding: 2px 7px;
+  background: var(--muted); color: var(--muted-foreground);
+}
+.zt-aging__tag.danger {
+  background: var(--priority-critical-bg); color: var(--priority-critical-fg);
+}
+.zt-aging__meta {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 7px 0 0;
+  font-size: 11px; color: var(--muted-foreground);
+}
+.zt-aging__meta span { display: inline-flex; align-items: center; gap: 4px; }
+
+.zt-aging__right {
+  display: flex; flex-direction: column; align-items: flex-end;
+  justify-content: center; gap: 7px; flex: none;
+}
+.zt-aging__age {
+  font-size: 11.5px; font-weight: 800; white-space: nowrap;
+  font-variant-numeric: tabular-nums; color: var(--muted-foreground);
+}
+.zt-aging__age.stale { color: #c2410c; }
+.zt-aging__open {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--primary); border-radius: 7px; padding: 5px 9px;
+  font: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; transition: background 140ms ease, border-color 140ms ease;
+}
+.zt-aging__open:hover {
+  background: color-mix(in oklab, var(--primary) 10%, var(--card));
+  border-color: var(--primary);
+}
+
+.zt-aging__empty, .zt-aging__foot {
+  margin: 0; padding: 14px 24px; font-size: 11.5px;
+  color: var(--muted-foreground); text-align: center;
+}
+.zt-aging__foot {
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklab, #f59e0b 4%, var(--card));
+}
+.zt-aging__empty { padding: 46px 24px; }
+
+@media (max-width: 860px) {
+  .zt-aging__head { flex-direction: column; }
+  .zt-aging__kpis { width: 100%; gap: 22px; }
+  .zt-aging__kpi { text-align: left; }
+  .zt-aging__period { grid-template-columns: minmax(0, 1fr); }
+  .zt-aging__rail {
+    border-right: 0; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 11px 16px;
+  }
+  .zt-aging__rail small { margin-top: 0; }
+  .zt-aging__events { padding: 8px 16px 12px; }
+  .zt-aging__event { grid-template-columns: 20px minmax(0, 1fr); }
+  .zt-aging__right {
+    grid-column: 2; flex-direction: row; align-items: center;
+    justify-content: flex-start; gap: 12px;
+  }
+}
+
 @media print {
   .no-print { display: none !important; }
   body { background: #fff; font-size: 11px; }

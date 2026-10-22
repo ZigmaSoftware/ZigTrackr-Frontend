@@ -6,7 +6,7 @@ import { masterApi } from "@/api/services";
 import { queryKeys } from "@/api/queryKeys";
 import { apiErrorMessage, apiFieldErrors } from "@/api/client";
 import { useAuth } from "@/features/auth/AuthContext";
-import { useMasterOptions } from "@/hooks/useMasters";
+import { useCompanies, useMasterOptions, useProjects } from "@/hooks/useMasters";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/tables/DataTable";
 import { Button, Card, IconButton, Input, Label, Select, Textarea } from "@/components/ui/primitives";
@@ -46,7 +46,11 @@ export interface MasterConfig {
 }
 
 export function MasterShell({ config }: { config: MasterConfig }) {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
+  const companyScreen = config.resource === "companies";
+  const canManage = !companyScreen || Boolean(user?.is_superuser);
+  const companies = useCompanies();
+  const [companyFilter, setCompanyFilter] = useState("");
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<MasterRow | null>(null);
   const [creating, setCreating] = useState(false);
@@ -54,9 +58,16 @@ export function MasterShell({ config }: { config: MasterConfig }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const isOpen = creating || Boolean(editing);
+  const projects = useProjects(values.company);
+  const fields: MasterField[] = companyScreen ? config.fields : [
+    { name: "company", label: "Company", type: "select", required: true },
+    ...(config.resource === "submodules" ? [{ name: "project", label: "Project", type: "select" as const, required: true }] : []),
+    ...config.fields,
+  ];
   const parentOptions = useMasterOptions(
     config.parentResource ?? "",
-    editing ? { include_inactive: true } : undefined,
+    { include_inactive: Boolean(editing), company: values.company || undefined,
+      ...(config.resource === "submodules" ? { project: values.project || undefined } : {}) },
     isOpen && Boolean(config.parentResource),
   );
   const parentRows = (parentOptions.data ?? []).filter((row) => editing || row.is_active);
@@ -65,8 +76,8 @@ export function MasterShell({ config }: { config: MasterConfig }) {
   );
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: queryKeys.masters.list(config.resource, { include_inactive: true }),
-    queryFn: () => masterApi.list(config.resource, { include_inactive: true }),
+    queryKey: queryKeys.masters.list(config.resource, { include_inactive: true, company: companyFilter }),
+    queryFn: () => masterApi.list(config.resource, { include_inactive: true, ...(!companyScreen && companyFilter ? { company: companyFilter } : {}) }),
   });
 
   const save = useMutation({
@@ -100,13 +111,14 @@ export function MasterShell({ config }: { config: MasterConfig }) {
     if (row) {
       setEditing(row);
       setValues(
-        Object.fromEntries(config.fields.map((f) => [
+        Object.fromEntries(fields.map((f) => [
           f.name, String(row[f.name] ?? row[`${f.name}_id`] ?? ""),
         ])),
       );
     } else {
       setCreating(true);
-      setValues(Object.fromEntries(config.fields.map((f) => [f.name, ""])));
+      setValues({ ...Object.fromEntries(fields.map((f) => [f.name, ""])),
+        company: companyFilter || user?.company?.id || (companies.data?.length === 1 ? companies.data[0].id : "") });
     }
   }
 
@@ -163,16 +175,17 @@ export function MasterShell({ config }: { config: MasterConfig }) {
 
     return [
       ...base,
+      ...(!companyScreen ? [{ key: "company", header: "Company", cell: (row: MasterRow) => String(row.company_name ?? "") }] : []),
       {
         key: "actions", header: "", width: "w-20", align: "right",
         cell: (row: MasterRow) => (
           <div className="flex justify-end gap-0.5">
-            {can("masters.master.edit") ? (
+            {canManage && can("masters.master.edit") ? (
               <IconButton label={`Edit ${row.name}`} onClick={() => open(row)}>
                 <Pencil />
               </IconButton>
             ) : null}
-            {can("masters.master.delete") && !row.is_system ? (
+            {canManage && can("masters.master.delete") && !row.is_system ? (
               <IconButton label={`Deactivate ${row.name}`} onClick={() => setDeleting(row)}>
                 <Trash2 />
               </IconButton>
@@ -181,7 +194,7 @@ export function MasterShell({ config }: { config: MasterConfig }) {
         ),
       },
     ];
-  }, [config, can]);
+  }, [config, can, canManage, companyScreen]);
 
   return (
     <>
@@ -190,7 +203,7 @@ export function MasterShell({ config }: { config: MasterConfig }) {
         description={config.description}
         breadcrumbs={[{ label: "Masters" }, { label: config.title }]}
         actions={
-          can("masters.master.add") ? (
+          canManage && can("masters.master.add") ? (
             <Button size="sm" onClick={() => open()}>
               <Plus /> Add {config.singular}
             </Button>
@@ -199,6 +212,12 @@ export function MasterShell({ config }: { config: MasterConfig }) {
       />
 
       <Card className="overflow-hidden">
+        {!companyScreen && user?.is_superuser ? <div className="border-b border-[var(--border)] p-3">
+          <Label htmlFor="master-company-filter">Company</Label>
+          <Select id="master-company-filter" className="mt-1 max-w-xs" value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
+            <option value="">All companies</option>{(companies.data ?? []).map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+          </Select>
+        </div> : null}
         {isError ? (
           <ErrorState onRetry={() => refetch()} />
         ) : (
@@ -226,12 +245,13 @@ export function MasterShell({ config }: { config: MasterConfig }) {
               onClick={() => {
                 const payload: Record<string, unknown> = {};
                 const nextErrors: Record<string, string> = {};
-                for (const field of config.fields) {
+                for (const field of fields) {
                   const value = values[field.name] ?? "";
                   if (field.required && !value.trim()) {
                     nextErrors[field.name] = `${field.label} is required.`;
                   }
                   if (field.type === "number" && value === "" && !field.nullable) continue;
+                  if ((field.name === "company" && Boolean(config.parentResource)) || (field.name === "project" && config.resource === "submodules")) continue;
                   payload[field.name] = field.type === "number"
                     ? (value === "" ? null : Number(value))
                     : value;
@@ -246,10 +266,14 @@ export function MasterShell({ config }: { config: MasterConfig }) {
         }
       >
         <div className="space-y-3.5">
-          {config.fields.map((field) => {
-            const locked = Boolean(field.lockedOnSystem && editing?.is_system);
-            const usesParent = field.type === "select" && !field.options && Boolean(config.parentResource);
-            const options = field.options ?? parentRows.map((row) => ({ value: row.id, label: row.name }));
+          {fields.map((field) => {
+            const locked = Boolean(field.lockedOnSystem && editing?.is_system)
+              || Boolean(editing && ["company", "project", "module"].includes(field.name));
+            const usesParent = field.type === "select" && !field.options && Boolean(config.parentResource)
+              && field.name !== "company" && !(field.name === "project" && config.resource === "submodules");
+            const rows = field.name === "company" ? companies.data ?? []
+              : field.name === "project" && config.resource === "submodules" ? projects.data ?? [] : parentRows;
+            const options = field.options ?? rows.map((row) => ({ value: row.id, label: row.name }));
             const parentMessage = usesParent && parentOptions.isError
               ? `Unable to load ${config.parentResource}. Please retry.`
               : usesParent && !parentOptions.isLoading && options.length === 0
@@ -271,7 +295,8 @@ export function MasterShell({ config }: { config: MasterConfig }) {
                     aria-invalid={Boolean(errors[field.name])}
                     aria-describedby={parentMessage ? `m-${field.name}-parent-status` : undefined}
                     value={values[field.name] ?? ""}
-                    onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
+                    onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value,
+                      ...(field.name === "company" ? { project: "", module: "" } : field.name === "project" ? { module: "" } : {}) }))}
                   >
                     <option value="">
                       {usesParent && parentOptions.isLoading

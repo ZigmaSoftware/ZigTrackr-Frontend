@@ -5,7 +5,7 @@ import * as Tabs from "@radix-ui/react-tabs";
 import {
   Bot, CircleAlert, FlaskConical, GitCommit,
   MessageSquare, MessageSquarePlus, Paperclip, PlayCircle,
-  RotateCcw, ShieldCheck, UserCheck, UserRoundCheck, X, XCircle,
+  Mail as MailIcon, Maximize2, RotateCcw, ShieldCheck, UserCheck, UserRoundCheck, X, XCircle,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -275,7 +275,9 @@ function RequestConversation({ messages, onAttachments }: {
   messages: RequestMessage[];
   onAttachments: () => void;
 }) {
-  return <section className="shrink-0 border-b border-[var(--border)] px-5 py-3">
+  const [zoomed, setZoomed] = useState(false);
+  return <>
+    <section className="shrink-0 border-b border-[var(--border)] px-5 py-3">
     <h3 className="mb-2 text-[13px] font-semibold">Request details</h3>
     <ol className="max-h-44 space-y-3 overflow-y-auto pr-2">
       {messages.map((item, index) => <li key={item.id} className={cn(
@@ -283,7 +285,7 @@ function RequestConversation({ messages, onAttachments }: {
       )}>
         <div className="flex flex-wrap items-center justify-between gap-1">
           <p className="text-[12px] font-semibold">{index === 0 ? "Original request" : "Reply"}</p>
-          <span className="text-[11px] text-[var(--muted-foreground)]">{formatDateTime(item.received_at)}</span>
+          <span className="ticket-request-date"><time dateTime={item.received_at}>{formatDateTime(item.received_at)}</time>{index === 0 ? <button type="button" className="ticket-request-zoom" title="Open full request thread" aria-label="Open full request thread" onClick={() => setZoomed(true)}><Maximize2 aria-hidden /></button> : null}</span>
         </div>
         <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
           From: {item.from_name ? `${item.from_name} <${item.from_email}>` : item.from_email || "Requester"}
@@ -295,7 +297,20 @@ function RequestConversation({ messages, onAttachments }: {
         </button> : null}
       </li>)}
     </ol>
-  </section>;
+  </section>
+    <Dialog.Root open={zoomed} onOpenChange={setZoomed}><Dialog.Portal>
+      <Dialog.Overlay className="ticket-request-zoom-overlay" />
+      <Dialog.Content className="ticket-request-zoom-dialog" aria-describedby="ticket-request-zoom-description">
+        <header className="ticket-request-zoom-header"><div><Dialog.Title>Email thread</Dialog.Title><Dialog.Description id="ticket-request-zoom-description">Full request conversation</Dialog.Description></div><Dialog.Close asChild><button type="button" className="ticket-request-zoom-close" aria-label="Close request thread"><X aria-hidden /></button></Dialog.Close></header>
+        <ol className="ticket-request-zoom-thread">{messages.map((item, index) => <li key={`zoom-${item.id}`} className="ticket-request-zoom-item">
+          <span className="ticket-request-zoom-node" aria-hidden><MailIcon /></span>
+          <div className="ticket-request-zoom-item-head"><div><strong>{index === 0 ? "Original request" : "Reply"}</strong><span>From: {item.from_name ? `${item.from_name} <${item.from_email}>` : item.from_email || "Requester"}</span></div><time dateTime={item.received_at}>{formatDateTime(item.received_at)}</time></div>
+          {item.subject ? <p className="ticket-request-zoom-subject">{item.subject}</p> : null}
+          <p className="ticket-request-zoom-message">{item.body || "No message body."}</p>
+        </li>)}</ol>
+      </Dialog.Content>
+    </Dialog.Portal></Dialog.Root>
+  </>;
 }
 
 function Pill({ tone, children }: { tone: "warn" | "info" | "good" | "bad" | "neutral"; children: React.ReactNode }) {

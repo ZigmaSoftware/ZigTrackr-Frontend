@@ -8,6 +8,11 @@ const CODE_FIELD = { name: "code", label: "Code", required: true, lockedOnSystem
                      help: "Stable identifier used by reports. Avoid changing it." } as const;
 
 export const MASTER_CONFIGS: Record<string, MasterConfig> = {
+  companies: {
+    resource: "companies", title: "Companies", singular: "Company",
+    description: "Company directory.",
+    fields: [CODE_FIELD, NAME_FIELD, { name: "support_email", label: "Support mailbox" }, DESCRIPTION_FIELD],
+  },
   projects: {
     resource: "projects", title: "Projects", singular: "Project",
     description: "Applications and systems this team supports.",

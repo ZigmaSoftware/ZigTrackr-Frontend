@@ -18,8 +18,12 @@ export function useMasterOptions(resource: string, params?: Record<string, unkno
   });
 }
 
-export function useProjects() {
-  return useMasterOptions("projects");
+export function useCompanies() {
+  return useMasterOptions("companies");
+}
+
+export function useProjects(company?: string) {
+  return useMasterOptions("projects", company ? { company } : undefined);
 }
 
 /** Modules for one project. Disabled until a project is chosen, so the cascade
@@ -32,24 +36,24 @@ export function useSubmodules(moduleId?: string | null) {
   return useMasterOptions("submodules", { module: moduleId }, Boolean(moduleId));
 }
 
-export function usePriorities() {
-  return useMasterOptions("priorities");
+export function usePriorities(company?: string) {
+  return useMasterOptions("priorities", company ? { company } : undefined);
 }
 
-export function useSeverities() {
-  return useMasterOptions("severities");
+export function useSeverities(company?: string) {
+  return useMasterOptions("severities", company ? { company } : undefined);
 }
 
-export function useRootCauseTypes() {
-  return useMasterOptions("root-cause-types");
+export function useRootCauseTypes(company?: string) {
+  return useMasterOptions("root-cause-types", company ? { company } : undefined);
 }
 
-export function useDepartments() {
-  return useMasterOptions("departments");
+export function useDepartments(company?: string) {
+  return useMasterOptions("departments", company ? { company } : undefined);
 }
 
-export function useSites() {
-  return useMasterOptions("sites");
+export function useSites(company?: string) {
+  return useMasterOptions("sites", company ? { company } : undefined);
 }
 
 export function useTeams() {

@@ -9,11 +9,14 @@ import { queryKeys } from "@/api/queryKeys";
 import { ConfirmDialog } from "@/components/feedback/Modal";
 import { cn } from "@/lib/utils";
 import { Button, IconButton, Input, Label, Select, Textarea } from "@/components/ui/primitives";
+import { useCompanies } from "@/hooks/useMasters";
+import { useAuth } from "@/features/auth/AuthContext";
 
 /* Both dropdowns start unselected rather than on a plausible default: a
    pre-filled type or source is a guess the creator never has to look at, and a
    wrong one is only caught downstream at review. */
 const EMPTY = {
+  company: "",
   ticketType: "",
   title: "",
   description: "",
@@ -35,6 +38,8 @@ export interface CreateTicketDialogProps {
 }
 
 export function CreateTicketDialog({ open, onOpenChange }: CreateTicketDialogProps) {
+  const { user } = useAuth();
+  const companies = useCompanies();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [confirmExit, setConfirmExit] = useState(false);
@@ -69,6 +74,7 @@ export function CreateTicketDialog({ open, onOpenChange }: CreateTicketDialogPro
   const create = useMutation({
     mutationFn: () =>
       ticketApi.create({
+        company: draft.company || user?.company?.id,
         ticket_type: draft.ticketType,
         title: draft.title.trim(),
         description: draft.description.trim(),
@@ -152,6 +158,10 @@ export function CreateTicketDialog({ open, onOpenChange }: CreateTicketDialogPro
 
             <form onSubmit={submit} noValidate className="flex min-h-0 flex-1 flex-col">
               <div className="space-y-4 overflow-y-auto px-5 py-4">
+                {user?.is_superuser ? <div className="space-y-1.5"><Label htmlFor="ct_company" required>Company</Label>
+                  <Select id="ct_company" value={draft.company} onChange={(event) => set("company", event.target.value)}>
+                    <option value="">Select company</option>{(companies.data ?? []).map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+                  </Select></div> : null}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="ct_type" required>Ticket type</Label>

@@ -1,9 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { mergeChatMessages } from "@/lib/ticketChat";
 import type { TicketChatMessage } from "@/types";
 
-export function useTicketSocket(path: string | null, queryKey: QueryKey) {
+export function useTicketSocket(
+  path: string | null,
+  queryKey: QueryKey,
+  /** Fired on every inbound message frame. Lets a caller refresh data that
+   *  is not in `queryKey` -- the public page needs the ticket payload, which
+   *  carries unread_count, and whose query is disabled on the Timeline tab. */
+  onMessage?: () => void,
+) {
   const queryClient = useQueryClient();
   const [connection, setConnection] = useState<{
     path: string;
@@ -11,6 +18,8 @@ export function useTicketSocket(path: string | null, queryKey: QueryKey) {
     state: "connected" | "disconnected";
   } | null>(null);
   const queryKeySignature = JSON.stringify(queryKey);
+  const onMessageRef = useRef(onMessage);
+  onMessageRef.current = onMessage;
   useEffect(() => {
     if (!path) return;
     const socketPath = path;
@@ -40,8 +49,10 @@ export function useTicketSocket(path: string | null, queryKey: QueryKey) {
             queryClient.setQueryData<TicketChatMessage[]>(stableQueryKey, (current) =>
               mergeChatMessages(current, data.message!));
             void queryClient.invalidateQueries({ queryKey: stableQueryKey, exact: true });
+            onMessageRef.current?.();
           } else if (data.type === "message_changed" || data.type === "receipts_changed") {
             void queryClient.invalidateQueries({ queryKey: stableQueryKey, exact: true });
+            onMessageRef.current?.();
           }
         } catch {
           // Ignore malformed frames; the next reconnect/fallback fetch restores history.

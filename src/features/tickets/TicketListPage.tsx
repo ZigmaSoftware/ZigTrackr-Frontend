@@ -1,25 +1,26 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   AlertOctagon, AlertTriangle, Archive, CheckCircle2, ChevronDown, FlaskConical, Inbox, Pause,
-  Play, PlayCircle, KeyRound, LifeBuoy, ListFilter, ClipboardList, RotateCcw, Trash2,
-  MoreVertical, Paperclip, XCircle,
+  Play, PlayCircle, KeyRound, LifeBuoy, ListFilter, ClipboardList, RotateCcw,
+  Paperclip, Pencil, ArrowUpRight, LayoutList, Rows3, Columns3, Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ticketApi } from "@/api/services";
 import { apiErrorMessage } from "@/api/client";
 import { queryKeys } from "@/api/queryKeys";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
+import { useCompanies } from "@/hooks/useMasters";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Button, Card, IconButton, Input, Select, Spinner } from "@/components/ui/primitives";
+import { Button, IconButton, Input, Select, Spinner } from "@/components/ui/primitives";
 import { DataTable, TruncatedCell, type Column } from "@/components/tables/DataTable";
 import { Pagination } from "@/components/tables/Pagination";
 import { ErrorState } from "@/components/feedback/states";
 import { ConfirmDialog, Modal } from "@/components/feedback/Modal";
-import { formatDate, formatDateTime } from "@/lib/dates";
+import { formatDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/AuthContext";
 import type { SupportTicketRow, TicketRemovalPayload } from "@/types";
@@ -27,9 +28,14 @@ import { EmailAttachmentList } from "./EmailAttachmentList";
 import { DeleteUnassignedTicketDialog } from "./dialogs/DeleteUnassignedTicketDialog";
 import { PriorityBadge } from "@/components/common/badges";
 import { ReviewAssignDialog } from "@/features/tickets/dialogs/ReviewAssignDialog";
-import { DescriptionPreview, RequestPreview, TicketStatusBadge } from "@/features/tickets/TicketTableCells";
+import { WorkDetailsDialog } from "@/features/tickets/dialogs/WorkDetailsDialog";
+import { TicketStatusBadge } from "@/features/tickets/TicketTableCells";
+import { TicketEmailDescription } from "./TicketEmailDescription";
+import { IntakeReceived, IntakeSender, IntakeSource, IntakeType, IntakeWaiting } from "./TicketIntakeCells";
+import { intakeParams, intakeView, intakeViews } from "./ticketIntake";
 import type { TicketWorkAction as WorkAction } from "@/features/tickets/dialogs/TicketDetailDialog";
 import "./TicketWorkControl.css";
+import "./TicketIntakeFocus.css";
 
 const TicketDetailDialog = lazy(() => import("@/features/tickets/dialogs/TicketDetailDialog")
   .then((module) => ({ default: module.TicketDetailDialog })));
@@ -117,75 +123,6 @@ function TypeBadge({ type }: { type: string }) {
 
 function collapseWhitespace(value: string | null | undefined) {
   return (value ?? "").replace(/\s+/g, " ").trim();
-}
-
-/* Source is the one thing in this queue that changes how you read the row -- an
-   email has a sender and an arrival time, a walk-up has neither -- so it earns
-   colour. The rest of the row stays monochrome. */
-function SourceBadge({ source }: { source: string }) {
-  const tone = source === "EMAIL"
-    ? "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300"
-    : source === "WHATSAPP"
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-      : source === "IN_PERSON"
-        ? "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
-        : "border-[var(--border)] bg-[var(--muted)] text-[var(--muted-foreground)]";
-  const label = source === "IN_PERSON" ? "In person"
-    : source === "WHATSAPP" ? "WhatsApp"
-      : source === "EMAIL" ? "Email" : pretty(source);
-  return (
-    <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium", tone)}>
-      {label}
-    </span>
-  );
-}
-
-function ReceivedFrom({ row }: { row: SupportTicketRow }) {
-  const name = row.reported_by_name || row.reported_by?.name || "";
-  const email = row.reported_by_email || row.mail_from_email || "";
-
-  if (!name && !email) {
-    return <span className="text-[12px] text-[var(--muted-foreground)]">Unknown sender</span>;
-  }
-  return (
-    <div className="min-w-0">
-      <TruncatedCell maxWidth="max-w-[200px]" className="font-medium">
-        {name || email}
-      </TruncatedCell>
-      {name && email ? (
-        <TruncatedCell maxWidth="max-w-[200px]" className="text-[11px] text-[var(--muted-foreground)]">
-          {email}
-        </TruncatedCell>
-      ) : null}
-    </div>
-  );
-}
-
-function MailedDate({ row }: { row: SupportTicketRow }) {
-  /* Manual tickets never had a mail, so the creation time is the honest answer
-     -- marked, so nobody reads it as a send time. */
-  const mailed = row.mail_received_at;
-  return (
-    <div className="min-w-0">
-      <span className="text-[12px] text-[var(--foreground)]">
-        {formatDateTime(mailed || row.created_at)}
-      </span>
-      {mailed ? null : (
-        <p className="text-[11px] text-[var(--muted-foreground)]">logged</p>
-      )}
-    </div>
-  );
-}
-
-/* Age is the queue's real priority signal, so it is the one number allowed to
-   raise its voice -- and only once it is genuinely old. */
-function AgeCell({ days }: { days: number }) {
-  const tone = days >= 7
-    ? "text-[var(--destructive)] font-semibold"
-    : days >= 3
-      ? "text-amber-600 dark:text-amber-400 font-medium"
-      : "text-[var(--muted-foreground)]";
-  return <span className={cn("text-[12px] tabular-nums", tone)}>{days}d</span>;
 }
 
 function elapsedWorkTime(startedAt: string | null, now: number) {
@@ -347,17 +284,20 @@ function TicketWorkControl({
 
 export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset }) {
   const { can, hasRole, user } = useAuth();
+  const companies = useCompanies();
   const isDeveloper = hasRole("DEVELOPER");
   const queryClient = useQueryClient();
   const preset = PRESETS[presetKey] ?? PRESETS.all;
   const personalView = presetKey === "all" && !can("tickets.ticket.view_all") && !can("tickets.ticket.classify") && !can("tickets.ticket.assign");
   const isUnassigned = presetKey === "unassigned";
+  const [compactIntake, setCompactIntake] = useState(true);
+  const [intakeColumns, setIntakeColumns] = useState(["title", "reported_by_name", "ticket_type", "original_mail_received_at", "actions"]);
   const [reviewTicketId, setReviewTicketId] = useState<string | null>(null);
   const [ticketToDelete, setTicketToDelete] = useState<SupportTicketRow | null>(null);
   const [ticketNotATicket, setTicketNotATicket] = useState<SupportTicketRow | null>(null);
   const [attachmentTicket, setAttachmentTicket] = useState<SupportTicketRow | null>(null);
   const [ticketToStart, setTicketToStart] = useState<SupportTicketRow | null>(null);
-  const canDelete = can("tickets.ticket.delete");
+  const [editingWork, setEditingWork] = useState<SupportTicketRow | null>(null);
   const canViewAttachments = can("bugs.attachment.view");
   // Seeded from ?ticket= so an old /tickets/detail/:id link opens the dialog.
   const [detailTicketId, setDetailTicketId] = useState<string | null>(
@@ -366,11 +306,17 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
   const [requestedAction, setRequestedAction] = useState<WorkAction | null>(null);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    if (isUnassigned) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, []);
-  const { filters, setFilters, clearFilters, activeCount } = useUrlFilters({ ordering: "-created_at" });
-  const queryParams = useMemo(() => ({ ...filters, ...preset.filters, submodule: presetKey }), [filters, preset.filters, presetKey]);
+  }, [isUnassigned]);
+  const { filters, setFilters, clearFilters, activeCount } = useUrlFilters({ ordering: "-created_at", limit: isUnassigned ? 6 : 25 });
+  const selectedIntakeView = intakeView(filters.intake_view);
+  const queryParams = useMemo(() => isUnassigned ? intakeParams(filters, selectedIntakeView) : ({ ...filters, ...preset.filters, submodule: presetKey }), [filters, preset.filters, presetKey, isUnassigned, selectedIntakeView]);
+  const intakeCounts = useQueries({ queries: isUnassigned ? intakeViews.map((view) => {
+    const params = intakeParams({ ...filters, ticket_type: "", needs_review: undefined, page: 1, limit: 1 }, view.key);
+    return { queryKey: queryKeys.tickets.list(params), queryFn: () => ticketApi.list(params), staleTime: 30_000, refetchInterval: 30_000, select: (response: { count: number }) => response.count };
+  }) : [] });
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.tickets.list(queryParams),
@@ -418,113 +364,58 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
      identical here by definition, so they are replaced by intake detail. */
   const unassignedColumns = useMemo<Column<SupportTicketRow>[]>(() => [
     {
-      key: "ref_no",
-      header: "Ref number",
-      sortable: true,
-      width: "w-36",
-      cell: (row) => (
-        <span className="font-mono text-[12px] font-semibold text-[var(--primary)] hover:underline">
-          {row.ref_no}
-        </span>
-      ),
-    },
-    {
-      key: "ticket_type",
-      header: "Type",
-      width: "w-32",
-      cell: (row) => <TypeBadge type={row.ticket_type} />,
-    },
-    {
-      key: "source",
-      header: "Source",
-      width: "w-28",
-      cell: (row) => <SourceBadge source={row.source} />,
-    },
-    {
-      key: "reported_by_name",
-      header: "Received from",
-      width: "w-56",
-      cell: (row) => <ReceivedFrom row={row} />,
-    },
-    {
       key: "title",
       header: "Request",
       sortable: true,
-      width: "w-[320px]",
-      cell: (row) => <RequestPreview value={row.title} />,
+      width: intakeColumns.includes("description") ? "w-[22%]" : "w-[39%]",
+      cell: (row) => <div className="intake-request">
+        <button type="button" className="intake-request-title" title={row.title} onClick={() => setReviewTicketId(row.id)}>{row.title}</button>
+        <div className="intake-request-meta"><span className="font-mono">{row.ref_no}</span>
+          {user?.is_superuser && row.company ? <span>{row.company.name}</span> : null}
+          {canViewAttachments && (row.email_attachment_count ?? 0) > 0 ? <button type="button"
+            title="View email attachments" aria-label={`View ${row.email_attachment_count} email attachments for ${row.ref_no}`}
+            onClick={() => setAttachmentTicket(row)}><Paperclip aria-hidden />{row.email_attachment_count}</button> : null}
+        </div>
+      </div>,
     },
     {
       key: "description",
       header: "Description",
-      width: "w-[390px]",
-      hideBelow: "xl",
-      cell: (row) => <DescriptionPreview value={row.description} />,
+      width: "w-[28%]",
+      cell: (row) => <TicketEmailDescription ticket={row} />,
     },
     {
-      key: "email_attachment_count",
-      header: "Attachment",
-      align: "center",
-      width: "w-24",
-      cell: (row) => canViewAttachments && (row.email_attachment_count ?? 0) > 0 ? (
-        <button type="button"
-          aria-label={`View ${row.email_attachment_count} email attachments for ${row.ref_no}`}
-          title="View email attachments"
-          className="inline-flex h-8 items-center justify-center gap-1 rounded-md px-2 text-[var(--primary)] hover:bg-[var(--primary)]/10"
-          onClick={(event) => { event.stopPropagation(); setAttachmentTicket(row); }}>
-          <Paperclip className="size-4" aria-hidden /><span className="text-xs">{row.email_attachment_count}</span>
-        </button>
-      ) : <span className="text-[var(--muted-foreground)]">—</span>,
+      key: "reported_by_name",
+      header: "Received from",
+      width: intakeColumns.includes("description") ? "w-[17%]" : "w-[23%]",
+      cell: (row) => <IntakeSender ticket={row} />,
+    },
+    {
+      key: "ticket_type",
+      header: "Classification",
+      width: intakeColumns.includes("description") ? "w-[11%]" : "w-[14%]",
+      cell: (row) => <div className="intake-classification"><IntakeType type={row.ticket_type} /><IntakeSource source={row.source} /></div>,
     },
     {
       // The original-mail timestamp is annotated by the ticket queryset.
       key: "original_mail_received_at",
-      header: "Mailed date",
+      header: "Received",
       sortable: true,
-      width: "w-36",
-      hideBelow: "lg",
-      cell: (row) => <MailedDate row={row} />,
+      width: intakeColumns.includes("description") ? "w-[14%]" : "w-[17%]",
+      cell: (row) => <div className="intake-received"><IntakeReceived ticket={row} /><IntakeWaiting days={row.age_days} /></div>,
     },
     {
-      key: "age_days",
-      header: "Age",
-      sortable: true,
-      width: "w-20",
-      cell: (row) => <AgeCell days={row.age_days} />,
-    },
-    ...(canDelete ? [{
       key: "actions",
       header: "",
       align: "center",
-      width: "w-14",
-      cell: (row) => row.can_delete ? (
-        <div className="flex w-full justify-center">
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <IconButton label={`Actions for ${row.ref_no}`} disabled={deletingTicket}
-                onClick={(event) => event.stopPropagation()}>
-                <MoreVertical />
-              </IconButton>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content align="end" sideOffset={6}
-                onClick={(event) => event.stopPropagation()}
-                className="z-50 min-w-44 rounded-lg border border-[var(--border)] bg-[var(--popover)] p-1 shadow-[var(--shadow-pop)]">
-                <DropdownMenu.Item
-                  onSelect={() => setTicketNotATicket(row)}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-[13px] outline-none data-[highlighted]:bg-[var(--muted)]">
-                  <XCircle className="size-4" aria-hidden /> Not a Ticket
-                </DropdownMenu.Item>
-                <DropdownMenu.Item onSelect={() => setTicketToDelete(row)}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-[13px] text-[var(--destructive)] outline-none data-[highlighted]:bg-[var(--muted)]">
-                  <Trash2 className="size-4" aria-hidden /> Delete
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
+      width: intakeColumns.includes("description") ? "w-[8%]" : "w-[7%]",
+      cell: (row) => (
+        <div className="intake-row-actions">
+          <IconButton label={`Review ${row.ref_no}`} variant="outline" onClick={() => setReviewTicketId(row.id)}><ArrowUpRight /></IconButton>
         </div>
-      ) : null,
-    } satisfies Column<SupportTicketRow>] : []),
-  ], [canDelete, canViewAttachments, deletingTicket]);
+      ),
+    },
+  ], [canViewAttachments, user?.is_superuser, intakeColumns]);
 
   const columns = useMemo<Column<SupportTicketRow>[]>(() => [
     {
@@ -672,7 +563,7 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
       // Portal clicks still bubble through React to the table row. Keep menu
       // and confirmation clicks from opening the ticket details as well.
       cell: (row) => (
-        <div className="flex justify-end" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
           <TicketWorkControl
             row={row}
             now={now}
@@ -685,44 +576,69 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
             onAction={(action) => openTicket(row.id, action)}
             onOpen={() => openTicket(row.id)}
           />
+          {row.can_edit_details ? <IconButton label="Edit work details" onClick={() => setEditingWork(row)}>
+            <Pencil className="size-4" />
+          </IconButton> : null}
         </div>
       ),
     },
   ], [presetKey, isDeveloper, user?.id, can, now, startWorkIsPending, startingTicketId]);
 
   return (
-    <>
+    <div className={isUnassigned ? cn("ticket-intake-focus", compactIntake && "intake-density-compact", intakeColumns.includes("description") && "intake-with-description", user?.is_superuser && "intake-multi-company") : undefined}>
       <PageHeader
-        title={personalView ? "My Tickets" : preset.title}
-        description={personalView ? "Requests assigned to you or reported by you." : preset.description}
-        breadcrumbs={[{ label: presetKey === "unassigned" ? "Ticket Creation" : "Ticket Management" }, { label: preset.title }]}
-        actions={isUnassigned ? null : (
+        className={isUnassigned ? "intake-page-heading" : undefined}
+        title={isUnassigned ? "Unassigned tickets" : personalView ? "My Tickets" : preset.title}
+        description={isUnassigned ? `${intakeCounts[0]?.data ?? data?.count ?? 0} requests awaiting review · ${user?.is_superuser ? (companies.data?.find((company) => company.id === filters.company)?.name || "All companies") : user?.company?.name || "Your company"}` : personalView ? "Requests assigned to you or reported by you." : preset.description}
+        breadcrumbs={[{ label: isUnassigned ? "Ticket creation" : "Ticket Management" }, { label: isUnassigned ? "Unassigned" : preset.title }]}
+        actions={isUnassigned ? <><div className="intake-density" role="group" aria-label="Row density">
+          <button type="button" title="Comfortable rows" aria-label="Comfortable rows" aria-pressed={!compactIntake} onClick={() => setCompactIntake(false)}><LayoutList />{!compactIntake ? <CheckCircle2 className="intake-density-check" aria-hidden /> : null}</button>
+          <button type="button" title="Compact rows" aria-label="Compact rows" aria-pressed={compactIntake} onClick={() => setCompactIntake(true)}><Rows3 />{compactIntake ? <CheckCircle2 className="intake-density-check" aria-hidden /> : null}</button>
+        </div></> : (
           <Button variant="outline" size="sm" onClick={clearFilters} disabled={activeCount === 0}>
             <ListFilter /> Clear filters
           </Button>
         )}
       />
 
-      <Card className="overflow-hidden">
+      {isUnassigned ? <div className="intake-tabs" role="tablist" aria-label="Intake stage">{intakeViews.map((view, index) => <button key={view.key} type="button" role="tab"
+        id={`intake-tab-${view.key}`} aria-controls="intake-results" aria-selected={view.key === selectedIntakeView} tabIndex={view.key === selectedIntakeView ? 0 : -1}
+        onKeyDown={(event) => {
+          const next = event.key === "ArrowRight" ? (index + 1) % intakeViews.length : event.key === "ArrowLeft" ? (index + intakeViews.length - 1) % intakeViews.length : event.key === "Home" ? 0 : event.key === "End" ? intakeViews.length - 1 : -1;
+          if (next < 0) return;
+          event.preventDefault(); setFilters({ intake_view: intakeViews[next].key, ticket_type: "", needs_review: "" }); document.getElementById(`intake-tab-${intakeViews[next].key}`)?.focus();
+        }} onClick={() => setFilters({ intake_view: view.key, ticket_type: "", needs_review: "" })}>{view.label}<span>{intakeCounts[index]?.data ?? "-"}</span></button>)}</div> : null}
+      <div className={isUnassigned ? "intake-shell" : "zcard overflow-hidden"}>
+        {user?.is_superuser && !isUnassigned ? <div className="border-b border-[var(--border)] p-3">
+          <Select className="max-w-xs" aria-label="Company" value={(filters.company as string) ?? ""}
+            onChange={(event) => setFilters({ company: event.target.value })}>
+            <option value="">All companies</option>{(companies.data ?? []).map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+          </Select>
+        </div> : null}
         <div
           className={cn(
             "grid gap-3 border-b border-[var(--border)] p-3",
             isUnassigned
-              ? "md:grid-cols-[minmax(180px,1fr)_150px_140px_180px_96px]"
+              ? "intake-filters"
               : "md:grid-cols-[minmax(240px,1fr)_170px_150px_170px]",
           )}
         >
-          <Input
+          {isUnassigned ? <div className="intake-search"><Search aria-hidden /><Input type="search" placeholder="Search subject, sender or reference..." aria-label="Search tickets"
+            value={(filters.search as string) ?? ""} onChange={(event) => setFilters({ search: event.target.value })} /></div> : <Input
             type="search"
             className="h-9 min-w-0"
             placeholder="Search ticket, sender, subject..."
             aria-label="Search tickets"
             value={(filters.search as string) ?? ""}
             onChange={(event) => setFilters({ search: event.target.value })}
-          />
+          />}
+          {isUnassigned && user?.is_superuser ? <Select aria-label="Company" value={(filters.company as string) ?? ""}
+            onChange={(event) => setFilters({ company: event.target.value })}>
+            <option value="">All companies</option>{(companies.data ?? []).map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+          </Select> : null}
           <Select
             value={(filters.ticket_type as string) ?? ""}
-            onChange={(event) => setFilters({ ticket_type: event.target.value })}
+            onChange={(event) => setFilters({ ticket_type: event.target.value, ...(isUnassigned ? { intake_view: "all", needs_review: "" } : {}) })}
             disabled={Boolean(preset.filters.ticket_type)}
             aria-label="Ticket type"
           >
@@ -746,16 +662,11 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
           </Select>
           {isUnassigned ? (
             <>
-              <Input
-                type="date"
-                className="h-9 min-w-0"
-                aria-label="Received date"
-                title="Filter by received date"
-                value={(filters.received_date as string) ?? ""}
-                onChange={(event) => setFilters({ received_date: event.target.value })}
-              />
-              <Button variant="outline" size="sm" className="h-9" title="Clear filters" aria-label="Clear filters" onClick={clearFilters}>
-                <ListFilter /> <span className="hidden lg:inline">Clear</span>
+              <Select aria-label="Sort requests" value={filters.ordering} onChange={(event) => setFilters({ ordering: event.target.value })}>
+                <option value="-created_at">Newest first</option><option value="created_at">Oldest first</option><option value="title">Subject A - Z</option><option value="-age_days">Longest waiting</option>
+              </Select>
+              <Button variant="ghost" size="sm" className="h-9" title="Reset filters" aria-label="Reset filters" onClick={clearFilters}>
+                <RotateCcw />
               </Button>
             </>
           ) : null}
@@ -776,10 +687,23 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
           ) : null}
         </div>
 
+        <div className={isUnassigned ? "intake-results" : undefined} id={isUnassigned ? "intake-results" : undefined} role={isUnassigned ? "tabpanel" : undefined} aria-labelledby={isUnassigned ? `intake-tab-${selectedIntakeView}` : undefined}>
+        {isUnassigned ? <div className="intake-table-heading"><span><Inbox aria-hidden /> Incoming requests <strong>{data?.count ?? 0}</strong></span>
+          <div className="intake-table-tools"><span>{filters.ordering === "created_at" ? "Oldest first" : filters.ordering === "title" ? "Subject A - Z" : filters.ordering === "-age_days" ? "Longest waiting" : "Newest first"}</span>
+          <DropdownMenu.Root><DropdownMenu.Trigger asChild><IconButton label="Visible columns"><Columns3 /></IconButton></DropdownMenu.Trigger><DropdownMenu.Portal>
+            <DropdownMenu.Content className="intake-columns-menu" align="end" sideOffset={6}><DropdownMenu.Label>Visible columns</DropdownMenu.Label>
+              {unassignedColumns.filter((column) => !["title", "actions"].includes(column.key)).map((column) => <DropdownMenu.CheckboxItem key={column.key} checked={intakeColumns.includes(column.key)}
+                onSelect={(event) => event.preventDefault()} onCheckedChange={(checked) => setIntakeColumns((current) => checked ? [...current, column.key] : current.filter((key) => key !== column.key))}>
+                <span><DropdownMenu.ItemIndicator><CheckCircle2 /></DropdownMenu.ItemIndicator></span>{column.header}</DropdownMenu.CheckboxItem>)}
+            </DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root></div>
+        </div> : null}
         {isError ? <ErrorState onRetry={() => refetch()} /> : (
           <>
             <DataTable
               columns={isUnassigned ? unassignedColumns : columns}
+              visibleColumns={isUnassigned ? intakeColumns : undefined}
+              layout={isUnassigned ? "fit" : "scroll"}
+              stickyHeader={!isUnassigned}
               rows={data?.results ?? []}
               rowKey={(row) => row.id}
               rowClassName={(row) => isDeveloper && row.owner?.id === user?.id && (row.effective_status || row.status) === "IN_PROGRESS"
@@ -792,9 +716,7 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
               isLoading={isLoading}
               ordering={filters.ordering}
               onOrderingChange={(ordering) => setFilters({ ordering }, { resetPage: false })}
-              onRowClick={(row) => (
-                isUnassigned ? setReviewTicketId(row.id) : openTicket(row.id)
-              )}
+              onRowClick={isUnassigned ? undefined : (row) => openTicket(row.id)}
               emptyTitle={isUnassigned ? "Nothing waiting" : "No tickets found"}
               emptyDescription={
                 isUnassigned
@@ -803,18 +725,20 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
               }
             />
             {data && data.count > 0 ? (
-              <Pagination
+              <div className={isUnassigned ? "intake-pagination" : undefined}><Pagination
                 page={data.page}
                 totalPages={data.total_pages}
                 count={data.count}
                 pageSize={filters.limit}
+                pageSizeOptions={isUnassigned ? [6, 12, 25, 50] : undefined}
                 onPageChange={(page) => setFilters({ page }, { resetPage: false })}
                 onPageSizeChange={(limit) => setFilters({ limit })}
-              />
+              /></div>
             ) : null}
           </>
         )}
-      </Card>
+        </div>
+      </div>
 
       {detailTicketId !== null ? (
         <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-black/30" role="status" aria-label="Loading ticket"><Spinner className="size-6 text-white" /></div>}>
@@ -838,11 +762,17 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
           open={reviewTicketId !== null}
           onOpenChange={(next) => (next ? null : setReviewTicketId(null))}
           ticket={(data?.results ?? []).find((row) => row.id === reviewTicketId) ?? null}
+          onNotATicket={setTicketNotATicket}
+          onDelete={setTicketToDelete}
         />
       ) : null}
 
+      {(editingWork || (ticketToStart && !resumingWork)) ? <WorkDetailsDialog
+        key={`${editingWork?.id ?? ticketToStart?.id}-${editingWork ? "edit" : "start"}`}
+        ticket={editingWork ?? ticketToStart} mode={editingWork ? "edit" : "start"}
+        onClose={() => { setEditingWork(null); setTicketToStart(null); }} /> : null}
       <ConfirmDialog
-        open={ticketToStart !== null}
+        open={ticketToStart !== null && resumingWork}
         onOpenChange={(open) => { if (!open && !startWork.isPending) setTicketToStart(null); }}
         title={resumingWork ? "Resume work on this ticket?" : "Start work on this ticket?"}
         description={`${ticketToStart?.reference ?? "This ticket"}${ticketToStart ? ` · ${ticketToStart.title}` : ""} will move to In Progress and ${resumingWork ? "resume" : "start"} the work timer.`}
@@ -872,6 +802,6 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
           <EmailAttachmentList ticketId={attachmentTicket.id} />
         </Modal>
       ) : null}
-    </>
+    </div>
   );
 }

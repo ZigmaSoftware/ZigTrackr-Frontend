@@ -27,6 +27,7 @@ const MasterShell = lazy(() => import("@/features/masters/MasterShell").then((m)
 const ReportShell = lazy(() => import("@/features/reports/ReportShell").then((m) => ({ default: m.ReportShell })));
 const TeamWorkloadPage = lazy(() => import("@/features/team/TeamPages").then((m) => ({ default: m.TeamWorkloadPage })));
 const AssignmentBoardPage = lazy(() => import("@/features/team/TeamPages").then((m) => ({ default: m.AssignmentBoardPage })));
+const NotificationsPage = lazy(() => import("@/features/notifications/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
 const ProfilePage = lazy(() => import("@/features/misc/ProfilePage").then((m) => ({ default: m.ProfilePage })));
 const AuditLogPage = lazy(() => import("@/features/administration/AuditLogPage").then((m) => ({ default: m.AuditLogPage })));
 const UserManagementPage = lazy(() => import("@/features/administration/UserManagementPage").then((m) => ({ default: m.UserManagementPage })));
@@ -171,6 +172,7 @@ export function AppRoutes() {
             <ProtectedRoute permissions={["admin.audit.view"]}><AuditLogPage /></ProtectedRoute>
           } />
 
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />

@@ -129,6 +129,9 @@ export const NAVIGATION: NavSection[] = [
         items: [
           { label: "Daily Bug Report", to: "/reports/daily", icon: FileBarChart },
           { label: "Employee Wise", to: "/reports/employee", icon: Users },
+          // Company sits above Project: it is the wider tier in the new
+          // multi-company hierarchy.
+          { label: "Company Wise", to: "/reports/company", icon: Building2 },
           { label: "Project Wise", to: "/reports/project", icon: Folder },
           { label: "Module Wise", to: "/reports/module", icon: Layers },
           { label: "Priority Wise", to: "/reports/priority", icon: SlidersHorizontal },
@@ -149,6 +152,7 @@ export const NAVIGATION: NavSection[] = [
         icon: Settings,
         permissions: ["masters.master.view"],
         items: [
+          { label: "Company", to: "/masters/companies", icon: Building2 },
           { label: "Project", to: "/masters/projects", icon: Folder },
           { label: "Module", to: "/masters/modules", icon: Layers },
           { label: "Submodule", to: "/masters/submodules", icon: GitBranch },

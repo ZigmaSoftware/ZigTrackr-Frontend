@@ -54,7 +54,7 @@ export function TicketChat({ messages, ticketId, publicTicketNo, canSend, reason
     for (let start = 0; start < newIds.length; start += 200) {
       const batch = newIds.slice(start, start + 200);
       batch.forEach((id) => pending.add(id));
-      const request = publicView ? ticketApi.publicChatReceipts(batch, status)
+      const request = publicView ? ticketApi.publicChatReceipts(publicTicketNo!, batch, status)
         : ticketApi.chatReceipts(ticketId!, batch, status);
       void request.then((updated) => {
         if (updated.length) {
@@ -75,7 +75,7 @@ export function TicketChat({ messages, ticketId, publicTicketNo, canSend, reason
     (current) => mergeChatMessages(current, saved));
   const send = useMutation({
     mutationFn: (payload: { text: string; reply?: string }) => publicView
-      ? ticketApi.publicSendChat(payload.text, payload.reply)
+      ? ticketApi.publicSendChat(publicTicketNo!, payload.text, payload.reply)
       : ticketApi.sendChatMessage(ticketId!, payload.text, payload.reply),
     onSuccess: (saved) => {
       merge(saved);
@@ -88,7 +88,7 @@ export function TicketChat({ messages, ticketId, publicTicketNo, canSend, reason
   const change = useMutation({
     mutationFn: (payload: { id: string; action: ChatAction; message?: string; emoji?: string }) => {
       const body = { action: payload.action, message: payload.message, emoji: payload.emoji };
-      return publicView ? ticketApi.publicChatMessageAction(payload.id, body)
+      return publicView ? ticketApi.publicChatMessageAction(publicTicketNo!, payload.id, body)
         : ticketApi.chatMessageAction(ticketId!, payload.id, body);
     },
     onSuccess: (saved) => {

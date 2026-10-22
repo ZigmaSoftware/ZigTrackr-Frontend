@@ -74,7 +74,7 @@ describe("navigation", () => {
     const reportLinks = flattenNavigation(NAVIGATION)
       .filter((item) => item.to.startsWith("/reports/"))
       .map((item) => item.to.replace("/reports/", ""));
-    expect(reportLinks.length).toBe(9);
+    expect(reportLinks.length).toBe(10);
     for (const name of reportLinks) {
       expect(REPORT_CONFIGS, `missing report config: ${name}`).toHaveProperty(name);
     }

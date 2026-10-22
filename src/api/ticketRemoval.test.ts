@@ -9,6 +9,21 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("unassigned ticket actions", () => {
+  it("serializes multiple ticket types as repeated Django filter keys", async () => {
+    const { api } = await import("./client");
+    const { ticketApi } = await import("./services");
+    let requestUrl = "";
+    api.defaults.adapter = async (config) => {
+      requestUrl = api.getUri(config);
+      return { data: { success: true, data: { count: 0, results: [] } }, status: 200, statusText: "OK", headers: {}, config };
+    };
+    await ticketApi.list({ company: "company-a", ticket_type: ["BUG", "SERVICE_REQUEST"], needs_review: false });
+    const url = new URL(requestUrl, "https://tracker.example");
+    expect(url.searchParams.getAll("ticket_type")).toEqual(["BUG", "SERVICE_REQUEST"]);
+    expect(url.searchParams.has("ticket_type[]")).toBe(false);
+    expect(url.searchParams.get("needs_review")).toBe("false");
+    expect(url.searchParams.get("company")).toBe("company-a");
+  });
   it.each([
     { disposition: "NOT_A_TICKET" as const },
     { disposition: "DELETE" as const, reason: "Duplicate request" },

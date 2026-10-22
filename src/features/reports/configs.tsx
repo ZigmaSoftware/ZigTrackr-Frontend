@@ -12,6 +12,7 @@ import {
 import { formatDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { BUG_COLUMNS, CLOSURE_BUG_COLUMNS } from "./bugColumns";
+import { AgingTimeline } from "./AgingTimeline";
 import type { ReportConfig, DrilldownRequest } from "./ReportShell";
 import type { DrilldownParams } from "./DrilldownDrawer";
 import type { BugListRow, BugStatus, AgingBand } from "@/types";
@@ -278,6 +279,54 @@ const projectConfig: ReportConfig<Row> = {
   },
 };
 
+/* ---- 3b. COMPANY WISE REPORT ---- */
+const companyConfig: ReportConfig<Row> = {
+  name: "company",
+  title: "Company Wise Report",
+  description: "Bug distribution across companies. Click a row to drill down.",
+  columns: [
+    text("name", "Company"),
+    num("total", "Total"),
+    num("open", "Open"),
+    num("closed", "Closed"),
+    num("overdue", "Overdue", "text-[var(--destructive)]"),
+    num("critical", "Critical", "text-[var(--priority-critical-fg)]"),
+  ],
+  renderChart: (data) => {
+    const rows = (data as Row[] | null) ?? [];
+    if (!rows.length) return null;
+    const chartData = rows.slice(0, 8).map((r) => ({
+      name: String(r.name ?? "\u2014"),
+      open: Number(r.open ?? 0),
+      closed: Number(r.closed ?? 0),
+    }));
+    return (
+      <ChartCard title="Open vs Closed by company">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ left: 10, right: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={50} />
+            <YAxis tick={{ fontSize: 12 }} />
+            <ChartTooltip contentStyle={TOOLTIP_STYLE} />
+            <Bar dataKey="open" name="Open" fill="#f18576" radius={[4, 4, 0, 0]} maxBarSize={32} />
+            <Bar dataKey="closed" name="Closed" fill="#23b8a6" radius={[4, 4, 0, 0]} maxBarSize={32} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    );
+  },
+  drilldownParams: (row) => {
+    const id = row.id as string | undefined;
+    // Bugs with no company are grouped under an "Unassigned" row that has no
+    // id; there is nothing to filter on, so the row simply is not clickable.
+    if (!id) return null;
+    return {
+      title: `${row.name ?? "Company"} \u2014 all bugs`,
+      params: { company: id },
+    };
+  },
+};
+
 /* ---- 4. MODULE WISE REPORT ---- */
 const moduleConfig: ReportConfig<Row> = {
   name: "module",
@@ -369,76 +418,31 @@ const priorityConfig: ReportConfig<Row> = {
 /* ---- 6. AGING REPORT ---- */
 
 /* Aging band colours — literal hex, same values as the light-mode CSS vars in index.css */
-const AGING_COLORS: Record<string, string> = {
-  NORMAL:    "#166534", // green
-  ATTENTION: "#854d0e", // amber
-  WARNING:   "#9a3412", // orange
-  CRITICAL:  "#991b1b", // red
-};
 
 const agingConfig: ReportConfig<Row> = {
   name: "aging",
   title: "Aging Report",
-  description: "How long open bugs have been waiting. Click a band to drill down.",
-  selectRows: (data) => ((data as Row)?.summary as Row[]) ?? [],
-  renderSummary: (data) => {
+  description: "Open bugs ordered by how long they have been waiting.",
+  // The timeline is the whole view, so there is no table or chart beneath it.
+  // Rows would repeat what the periods already show, and a bar chart of four
+  // bands says less than the list of what is actually ageing.
+  selectRows: () => [],
+  renderSummary: (data, onDrilldown) => {
     const d = (data ?? {}) as Row;
+    const bugs = (d.bugs as BugListRow[] | undefined) ?? [];
     return (
-      <SummaryGrid items={[
-        { label: "Total open", value: d.total_open },
-        { label: "Average age (days)", value: d.average_age },
-      ]} />
+      <AgingTimeline
+        bugs={bugs}
+        totalOpen={Number(d.total_open ?? 0)}
+        averageAge={Number(d.average_age ?? 0)}
+        onOpen={(bug) => onDrilldown({
+          title: `${bug.bug_no} — ${bug.title}`,
+          // `search` rather than a bug_no filter: no such filter field
+          // exists, so it would be silently ignored. search matches bug_no.
+          params: { search: bug.bug_no },
+        })}
+      />
     );
-  },
-  renderChart: (data) => {
-    const bands = ((data as Row)?.summary as Row[] | null) ?? [];
-    if (!bands.length) return null;
-    const chartData = bands.map((b) => ({
-      name: String(b.label ?? b.code ?? "—"),
-      count: Number(b.count ?? 0),
-      fill: AGING_COLORS[String(b.code)] ?? "#5d9cec",
-    }));
-    return (
-      <ChartCard title="Open bugs by aging band">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ left: 10, right: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <ChartTooltip contentStyle={TOOLTIP_STYLE} />
-            <Bar dataKey="count" name="Bugs" radius={[4, 4, 0, 0]} maxBarSize={40}>
-              {chartData.map((d, i) => (
-                <Cell key={i} fill={d.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
-    );
-  },
-  columns: [
-    {
-      key: "label", header: "Band",
-      cell: (row) => {
-        const code = String(row.code ?? "");
-        const color = AGING_COLORS[code] ?? "#94a3b8";
-        return (
-          <span className="flex items-center gap-2 font-medium">
-            <span className="size-2 rounded-full" style={{ backgroundColor: color }} aria-hidden />
-            {String(row.label ?? "—")}
-          </span>
-        );
-      },
-    },
-    num("count", "Bugs"),
-  ],
-  drilldownParams: (row) => {
-    const code = row.code as string | undefined;
-    if (!code) return null;
-    return {
-      title: `${row.label ?? "Band"} — open bugs`,
-      params: { aging_band: code, exclude_status: EXCLUDE_CLOSED },
-    };
   },
 };
 
@@ -691,6 +695,7 @@ const rootCauseConfig: ReportConfig<Row> = {
 export const REPORT_CONFIGS: Record<string, ReportConfig<Row>> = {
   daily: dailyConfig,
   employee: employeeConfig,
+  company: companyConfig,
   project: projectConfig,
   module: moduleConfig,
   priority: priorityConfig,

@@ -8,8 +8,13 @@ import { apiErrorMessage } from "@/api/client";
 import { queryKeys } from "@/api/queryKeys";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button, Card, CardBody, Input, Label, Select, Textarea } from "@/components/ui/primitives";
+import { useCompanies } from "@/hooks/useMasters";
+import { useAuth } from "@/features/auth/AuthContext";
 
 export function CreateTicketPage() {
+  const { user } = useAuth();
+  const companies = useCompanies();
+  const [company, setCompany] = useState("");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [ticketType, setTicketType] = useState("BUG");
@@ -18,6 +23,7 @@ export function CreateTicketPage() {
 
   const create = useMutation({
     mutationFn: () => ticketApi.create({
+      company: company || user?.company?.id,
       ticket_type: ticketType,
       title,
       description,
@@ -57,6 +63,10 @@ export function CreateTicketPage() {
       <form onSubmit={submit} noValidate className="max-w-3xl">
         <Card>
           <CardBody className="space-y-4">
+            {user?.is_superuser ? <div className="space-y-1.5"><Label htmlFor="ticket-company" required>Company</Label>
+              <Select id="ticket-company" value={company} onChange={(event) => setCompany(event.target.value)}>
+                <option value="">Select company</option>{(companies.data ?? []).map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+              </Select></div> : null}
             <div className="grid gap-4 sm:grid-cols-[220px_minmax(0,1fr)]">
               <div className="space-y-1.5">
                 <Label htmlFor="ticket_type" required>Ticket type</Label>

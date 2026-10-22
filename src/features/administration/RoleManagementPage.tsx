@@ -7,16 +7,21 @@ import { apiErrorMessage } from "@/api/client";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Modal } from "@/components/feedback/Modal";
 import { ErrorState } from "@/components/feedback/states";
-import { Button, Card, CardBody, CardHeader, CardTitle, Input, Label, Skeleton, Textarea } from "@/components/ui/primitives";
+import { Button, Card, CardBody, CardHeader, CardTitle, Input, Label, Select, Skeleton, Textarea } from "@/components/ui/primitives";
 import type { RoleRow } from "@/types";
+import { useAuth } from "@/features/auth/AuthContext";
+import { useCompanies } from "@/hooks/useMasters";
 
 export function RoleManagementPage() {
   const queryClient = useQueryClient();
+  const { user, can } = useAuth();
+  const companies = useCompanies();
+  const [company, setCompany] = useState("");
   const [editing, setEditing] = useState<RoleRow | null>(null);
-  const roles = useQuery({ queryKey: ["roles"], queryFn: roleApi.list });
+  const roles = useQuery({ queryKey: ["roles", company], queryFn: () => roleApi.list(company || undefined) });
   const update = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Partial<RoleRow> }) =>
-      roleApi.update(id, payload),
+      roleApi.update(id, payload, company || undefined),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["roles"] });
       await queryClient.invalidateQueries({ queryKey: ["permission-matrix"] });
@@ -32,6 +37,10 @@ export function RoleManagementPage() {
         title="Role Management"
         description="Manage role labels, descriptions and active status."
         breadcrumbs={[{ label: "Administration" }, { label: "Roles" }]}
+        actions={user?.is_superuser ? <Select aria-label="Role company" className="max-w-[260px]" value={company}
+          disabled={Boolean(editing)} onChange={(event) => setCompany(event.target.value)}>
+          <option value="">Global defaults</option>{(companies.data ?? []).map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+        </Select> : undefined}
       />
 
       {roles.isError ? (
@@ -51,9 +60,9 @@ export function RoleManagementPage() {
                         {role.code}
                       </span>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => setEditing(role)}>
+                    {can("admin.role.manage") && role.can_manage !== false ? <Button size="sm" variant="outline" onClick={() => setEditing(role)}>
                       <Edit3 /> Edit
-                    </Button>
+                    </Button> : null}
                   </CardHeader>
                   <CardBody className="space-y-3">
                     <p className="min-h-10 text-[13px] text-[var(--muted-foreground)]">
@@ -130,7 +139,6 @@ function RoleDialog({
             type="checkbox"
             checked={isActive}
             onChange={(event) => setIsActive(event.target.checked)}
-            disabled={role.is_system}
           />
           Active
         </label>

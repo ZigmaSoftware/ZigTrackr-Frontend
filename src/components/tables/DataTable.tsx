@@ -43,6 +43,8 @@ export interface DataTableProps<T> {
   visibleColumns?: string[];
   skeletonRows?: number;
   stickyHeader?: boolean;
+  /** Opt-in bounded layout; existing lists keep their scrollable table. */
+  layout?: "scroll" | "fit";
 }
 
 const HIDE_BELOW: Record<string, string> = {
@@ -61,7 +63,7 @@ const ALIGN: Record<string, string> = {
 export function DataTable<T>({
   columns, rows, rowKey, isLoading, ordering, onOrderingChange, onRowClick,
   emptyTitle = "Nothing to show", emptyDescription, emptyIcon,
-  rowClassName, visibleColumns, skeletonRows = 8, stickyHeader = true,
+  rowClassName, visibleColumns, skeletonRows = 8, stickyHeader = true, layout = "scroll",
 }: DataTableProps<T>) {
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const dragged = useRef(false);
@@ -79,8 +81,8 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="relative w-full overflow-x-auto">
-      <table className="w-full min-w-[1120px] border-collapse">
+    <div className={cn("relative w-full", layout === "fit" ? "data-table-fit" : "overflow-x-auto")}>
+      <table className={cn("w-full border-collapse", layout === "fit" ? "table-fixed" : "min-w-[1120px]")}>
         <caption className="sr-only">{emptyTitle}</caption>
         <thead
           className={cn(
@@ -94,6 +96,7 @@ export function DataTable<T>({
               return (
                 <th
                   key={column.key}
+                  data-column={column.key}
                   scope="col"
                   className={cn(
                     "ztable-head",
@@ -133,7 +136,7 @@ export function DataTable<T>({
             Array.from({ length: skeletonRows }).map((_, index) => (
               <tr key={index} className="border-b border-[var(--border)]">
                 {shown.map((column) => (
-                  <td key={column.key} className={cn("ztable-cell", column.hideBelow && HIDE_BELOW[column.hideBelow])}>
+                  <td key={column.key} data-column={column.key} className={cn("ztable-cell", column.hideBelow && HIDE_BELOW[column.hideBelow])}>
                     <Skeleton className="h-4 w-full max-w-[140px]" />
                   </td>
                 ))}
@@ -185,6 +188,7 @@ export function DataTable<T>({
                 {shown.map((column) => (
                   <td
                     key={column.key}
+                    data-column={column.key}
                     className={cn(
                       "ztable-cell",
                       ALIGN[column.align ?? "left"],

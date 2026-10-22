@@ -29,7 +29,7 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <AuthProvider>
           <AppRoutes />
-          <Toaster position="bottom-right" richColors closeButton />
+          <Toaster position="top-center" richColors closeButton />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

@@ -12,6 +12,7 @@ export type VerificationResult = "PASSED" | "FAILED" | "PARTIAL";
 export type Environment = "PRODUCTION" | "UAT" | "STAGING" | "DEVELOPMENT" | "LOCAL";
 
 export interface UserLite {
+  company_id?: string | null;
   id: string;
   username: string;
   name: string;
@@ -97,6 +98,8 @@ export interface BugDetail extends BugListRow {
 }
 
 export interface SupportTicketRow {
+  company?: NamedRef | null;
+  can_edit_details?: boolean;
   id: string;
   /** Null until the ticket is reviewed and routed to an owner. */
   ticket_no: string | null;
@@ -106,6 +109,8 @@ export interface SupportTicketRow {
   reference: string;
   description: string;
   mail_id: string | null;
+  /** Complete preserved email thread, included only for the unassigned list. */
+  description_messages?: RequestMessage[];
   /** When the originating email arrived; null for manually created tickets. */
   mail_received_at: string | null;
   mail_from_email: string;
@@ -166,6 +171,10 @@ export interface TicketUpdateRow {
 }
 
 export interface SupportTicketDetail extends SupportTicketRow {
+  severity: CodedRef | null;
+  department: NamedRef | null;
+  site: NamedRef | null;
+  environment: string;
   active_work_conflict: { id: string; reference: string } | null;
   submodule: NamedRef | null;
   confirmed_by: UserLite | null;
@@ -252,6 +261,13 @@ export interface TicketTimelineEvent {
   remarks: string;
 }
 
+export interface PublicTrackStep {
+  code: string;
+  label: string;
+  state: "complete" | "current" | "upcoming";
+  completed_at: string | null;
+}
+
 export interface PublicTrackTicket {
   found: boolean;
   ticket_no: string;
@@ -260,7 +276,51 @@ export interface PublicTrackTicket {
   status: string;
   status_label: string;
   can_reopen: boolean;
+  can_confirm_close: boolean;
+  auto_closes_at: string | null;
+  public_stage: string;
+  progress: PublicTrackStep[];
   chat_state: { can_view: boolean; can_send: boolean; reason: string | null };
+  /** Staff messages the requester has not read yet. */
+  unread_count: number;
+}
+
+/** One row in the signed-in requester's ticket list. */
+export interface PublicTrackListRow {
+  ticket_no: string;
+  subject: string;
+  status: string;
+  status_label: string;
+  public_stage: string;
+  owner_name: string | null;
+  created_at: string;
+  last_message_at: string | null;
+  unread_count: number;
+}
+
+/** What a verified session looks like: the address plus everything it owns. */
+export interface PublicTrackSession {
+  email: string;
+  tickets: PublicTrackListRow[];
+}
+
+/** One row from /notifications/. */
+export interface NotificationRow {
+  id: string;
+  notification_type: string;
+  type_label: string;
+  title: string;
+  message: string;
+  bug_no: string | null;
+  bug_id: string | null;
+  ticket_no: string | null;
+  ticket_id: string | null;
+  /** Server-decided: the client shows these as a persistent toast. */
+  is_urgent: boolean;
+  link: string;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
 }
 
 export interface TicketChatMessage {
@@ -328,6 +388,7 @@ export interface SessionPolicy {
 }
 
 export interface SessionUser {
+  company?: NamedRef | null;
   id: string;
   username: string;
   name: string;
@@ -391,6 +452,7 @@ export interface SidebarCounts {
 }
 
 export interface RoleRow {
+  can_manage?: boolean;
   id: string;
   code: string;
   name: string;
@@ -409,7 +471,8 @@ export interface PermissionCell {
 }
 
 export interface PermissionMatrix {
-  roles: { id: string; code: string; name: string; is_system: boolean }[];
+  company?: NamedRef | null;
+  roles: { id: string; code: string; name: string; is_system: boolean; can_manage?: boolean }[];
   modules: { module: string; permissions: PermissionCell[]; submodules: PermissionSubmodule[] }[];
 }
 
