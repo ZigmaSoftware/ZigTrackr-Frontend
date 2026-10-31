@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, CheckCheck, Circle, Mail, Moon, RotateCcw, ShieldCheck, Sun, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCheck, Circle, Mail, Moon, RotateCcw, ShieldCheck, Star, Sun, X } from "lucide-react";
 import { ticketApi } from "@/api/services";
 import { apiErrorMessage, bootstrapCsrf } from "@/api/client";
 import type { PublicTrackListRow, PublicTrackStep, TicketChatMessage } from "@/types";
@@ -27,16 +27,16 @@ function savedTheme(): "light" | "dark" {
 // undelivered code is not a dead end.
 const RESEND_SECONDS = 60;
 
-function savedTab(): "timeline" | "chat" | null {
+function savedTab(): "timeline" | "chat" | "review" | null {
   try {
     const value = sessionStorage.getItem(TRACK_SESSION_KEY);
-    return value === "timeline" || value === "chat" ? value : null;
+    return value === "timeline" || value === "chat" || value === "review" ? value : null;
   } catch {
     return null;
   }
 }
 
-function rememberTab(tab: "timeline" | "chat" | null) {
+function rememberTab(tab: "timeline" | "chat" | "review" | null) {
   try {
     if (tab) sessionStorage.setItem(TRACK_SESSION_KEY, tab);
     else sessionStorage.removeItem(TRACK_SESSION_KEY);
@@ -76,7 +76,7 @@ export function TrackTicketPage() {
   const [signedIn, setSignedIn] = useState(false);
   const [tickets, setTickets] = useState<PublicTrackListRow[]>([]);
   const [openTicketNo, setOpenTicketNo] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"timeline" | "chat">(savedTab() ?? "timeline");
+  const [activeTab, setActiveTab] = useState<"timeline" | "chat" | "review">(savedTab() ?? "timeline");
   const [error, setError] = useState("");
   const [reopenReason, setReopenReason] = useState("");
   const [showReopen, setShowReopen] = useState(false);
@@ -85,6 +85,9 @@ export function TrackTicketPage() {
   const [resendIn, setResendIn] = useState(0);
   const [confirmSignout, setConfirmSignout] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [theme, setTheme] = useState(savedTheme);
 
   useEffect(() => {
@@ -153,7 +156,7 @@ export function TrackTicketPage() {
     return () => clearTimeout(timer);
   }, [resendIn]);
 
-  function selectTab(tab: "timeline" | "chat") {
+  function selectTab(tab: "timeline" | "chat" | "review") {
     setActiveTab(tab);
     rememberTab(tab);
   }
@@ -171,6 +174,9 @@ export function TrackTicketPage() {
     setConfirmClose(false);
     setShowReopen(false);
     setReopenReason("");
+    setReviewRating(0);
+    setReviewComment("");
+    setReviewSubmitted(false);
     for (const key of ["public-track-session", "public-track-ticket",
                        "public-track-activity", "public-track-chat"]) {
       queryClient.removeQueries({ queryKey: [key] });
@@ -264,6 +270,8 @@ export function TrackTicketPage() {
       void queryClient.invalidateQueries({ queryKey: ["public-track-session"] });
       setShowReopen(false);
       setReopenReason("");
+      setActiveTab("timeline");
+      rememberTab("timeline");
       setError("");
     },
     onError: (err) => setError(apiErrorMessage(err, "Could not reopen this ticket.")),
@@ -277,9 +285,22 @@ export function TrackTicketPage() {
       setShowReopen(false);
       setReopenReason("");
       setConfirmClose(false);
+      setActiveTab("review");
+      rememberTab("review");
       setError("");
     },
     onError: (err) => setError(apiErrorMessage(err, "Could not close this ticket. Please try again.")),
+  });
+
+  const review = useMutation({
+    mutationFn: (payload: { rating: number; comment: string }) => ticketApi.publicReview(openTicketNo!, payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["public-track-ticket", openTicketNo], data);
+      void queryClient.invalidateQueries({ queryKey: ["public-track-session"] });
+      setReviewSubmitted(true);
+      setError("");
+    },
+    onError: (err) => setError(apiErrorMessage(err, "Could not send your review.")),
   });
 
   function submit(event: FormEvent) {
@@ -306,6 +327,14 @@ export function TrackTicketPage() {
      over the tab you are already looking at is noise. */
   const unreadChat = activeTab === "chat" ? 0 : (openTicket?.unread_count ?? 0);
   const totalUnread = tickets.reduce((sum, row) => sum + row.unread_count, 0);
+  const isClosed = openTicket?.status === "CLOSED" || openTicket?.status === "REJECTED";
+  const displayedTab = !isClosed && activeTab === "review" ? "timeline" : activeTab;
+
+  useEffect(() => {
+    if (!openTicketNo || !isClosed) return;
+    setActiveTab("review");
+    rememberTab("review");
+  }, [openTicketNo, isClosed]);
 
   const cardTitle = openTicket ? "Your request" : signedIn ? "Your requests" : "Sign in";
   const cardSub = openTicket ? "Ticket tracking" : signedIn ? email : "Secure support access";
@@ -441,6 +470,7 @@ export function TrackTicketPage() {
                   <button type="button" className="track-reopen-button" disabled={closeTicket.isPending}
                     onClick={() => { setError(""); setShowReopen(true); }}><RotateCcw size={14} aria-hidden />Re-open Ticket</button>
                   {openTicket.can_confirm_close ? confirmClose ? <div className="track-close-confirmation">
+                    <span>Confirm the issue is fixed?</span>
                     <button type="button" className="track-close-cancel" disabled={closeTicket.isPending}
                       onClick={() => setConfirmClose(false)}>No</button>
                     <button type="button" className="track-confirm-close" disabled={closeTicket.isPending}
@@ -456,14 +486,31 @@ export function TrackTicketPage() {
             </div> : null}
             {error ? <p className="track-reopen-error" role="alert">{error}</p> : null}
             <div className="track-tabs" role="tablist" aria-label="Ticket details">
-              <button id="track-timeline-tab" type="button" role="tab" aria-controls="track-timeline-panel" aria-selected={activeTab === "timeline"} className={`track-tab${activeTab === "timeline" ? " active" : ""}`} onClick={() => selectTab("timeline")}>Activity Timeline</button>
-              <button id="track-chat-tab" type="button" role="tab" aria-controls="track-chat-panel" aria-selected={activeTab === "chat"} className={`track-tab${activeTab === "chat" ? " active" : ""}${unreadChat > 0 ? " has-unread" : ""}`} onClick={() => selectTab("chat")}>Chat{unreadChat > 0 ? <b className="track-tab-badge" aria-label={`${unreadChat} unread message${unreadChat === 1 ? "" : "s"}`}>{unreadChat > 9 ? "9+" : unreadChat}</b> : null}</button>
+              <button id="track-timeline-tab" type="button" role="tab" aria-controls="track-timeline-panel" aria-selected={displayedTab === "timeline"} className={`track-tab${displayedTab === "timeline" ? " active" : ""}`} onClick={() => selectTab("timeline")}>Activity Timeline</button>
+              <button id="track-chat-tab" type="button" role="tab" aria-controls="track-chat-panel" aria-selected={displayedTab === "chat"} className={`track-tab${displayedTab === "chat" ? " active" : ""}${unreadChat > 0 ? " has-unread" : ""}`} onClick={() => selectTab("chat")}>Chat{unreadChat > 0 ? <b className="track-tab-badge" aria-label={`${unreadChat} unread message${unreadChat === 1 ? "" : "s"}`}>{unreadChat > 9 ? "9+" : unreadChat}</b> : null}</button>
+              {isClosed ? <button id="track-review-tab" type="button" role="tab" aria-controls="track-review-panel" aria-selected={displayedTab === "review"} className={`track-tab${displayedTab === "review" ? " active" : ""}`} onClick={() => selectTab("review")}>Review</button> : null}
             </div>
-            {activeTab === "timeline" ? <div id="track-timeline-panel" className="track-panel track-panel-timeline" role="tabpanel" aria-labelledby="track-timeline-tab" tabIndex={0}>
+            {displayedTab === "timeline" ? <div id="track-timeline-panel" className="track-panel track-panel-timeline" role="tabpanel" aria-labelledby="track-timeline-tab" tabIndex={0}>
               <ActivityTimeline steps={openTicket.progress} />
-            </div> : <div id="track-chat-panel" className="track-panel track-panel-chat" role="tabpanel" aria-labelledby="track-chat-tab">
+            </div> : displayedTab === "chat" ? <div id="track-chat-panel" className="track-panel track-panel-chat" role="tabpanel" aria-labelledby="track-chat-tab">
               <TicketChat messages={chat.data ?? []} publicTicketNo={openTicket.ticket_no} canSend={openTicket.chat_state.can_send} reason={openTicket.chat_state.reason} loading={chat.isLoading} />
-            </div>}
+            </div> : <ReviewPanel
+              rating={reviewRating}
+              comment={reviewComment}
+              submitted={reviewSubmitted}
+              onRatingChange={setReviewRating}
+              onCommentChange={setReviewComment}
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (reviewRating <= 0) return;
+                if (reviewRating <= 2 && !reviewComment.trim()) {
+                  setError("Please add a comment for a 1 or 2 star rating.");
+                  return;
+                }
+                review.mutate({ rating: reviewRating, comment: reviewComment.trim() });
+              }}
+              submitting={review.isPending}
+            />}
           </div> : null}
           <div className="track-card-note"><ShieldCheck size={13} aria-hidden /><span>Your requests are visible only to you and our team.</span></div>
         </section>
@@ -484,4 +531,55 @@ function ActivityTimeline({ steps }: { steps: PublicTrackStep[] }) {
       {step.completed_at ? <time className="track-progress-date" dateTime={step.completed_at}>{formatDateTime(step.completed_at)}</time> : null}
     </li>;
   })}</ol>;
+}
+
+function ReviewPanel({
+  rating,
+  comment,
+  submitted,
+  onRatingChange,
+  onCommentChange,
+  onSubmit,
+  submitting,
+}: {
+  rating: number;
+  comment: string;
+  submitted: boolean;
+  onRatingChange: (value: number) => void;
+  onCommentChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting: boolean;
+}) {
+  if (submitted) {
+    return <div id="track-review-panel" className="track-panel track-review-panel track-review-panel-submitted" role="tabpanel" aria-labelledby="track-review-tab">
+      <div className="track-review-success">
+        <span className="track-review-success-icon"><Check size={20} aria-hidden /></span>
+        <p className="track-review-eyebrow">THANK YOU</p>
+        <h2>Your feedback was received.</h2>
+        <p>Your review helps us improve the support experience.</p>
+      </div>
+    </div>;
+  }
+
+  return <form id="track-review-panel" className="track-panel track-review-panel" role="tabpanel" aria-labelledby="track-review-tab" onSubmit={onSubmit}>
+    <div className="track-review-card">
+      <h2>How did we do?</h2>
+      <p className="track-review-copy">Your issue was resolved by our support team. Tell us how the experience felt.</p>
+      <div className="track-review-stars" role="radiogroup" aria-label="Rate your support experience">
+        {[1, 2, 3, 4, 5].map((value) => <button
+          key={value}
+          type="button"
+          className={value <= rating ? "selected" : ""}
+          role="radio"
+          aria-checked={value === rating}
+          aria-label={`${value} out of 5 stars`}
+          onClick={() => onRatingChange(value)}
+        ><Star size={29} fill="currentColor" aria-hidden /></button>)}
+      </div>
+      <p className="track-review-rating-label">{rating ? `${rating} out of 5` : "Select a rating"}</p>
+      <label className="track-review-comment" htmlFor="track-review-comment">Comment {rating <= 2 ? <span className="required">Required for 1-2 stars</span> : <span>(optional)</span>}</label>
+      <textarea id="track-review-comment" value={comment} required={rating > 0 && rating <= 2} maxLength={2000} placeholder={rating > 0 && rating <= 2 ? "Tell us what went wrong" : "Add an optional comment"} onChange={(event) => onCommentChange(event.target.value)} />
+      <button className="track-review-submit" type="submit" disabled={!rating || submitting}><span>{submitting ? "Sending..." : "Send review"}</span><ArrowRight size={16} aria-hidden /></button>
+    </div>
+  </form>;
 }

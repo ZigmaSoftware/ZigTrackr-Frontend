@@ -150,6 +150,9 @@ export interface SupportTicketRow {
   reassign_block_reason: string | null;
   allowed_actions: string[];
   chat_state: { can_view: boolean; can_send: boolean; reason: string | null };
+  requester_rating: number | null;
+  requester_review_comment: string;
+  requester_reviewed_at: string | null;
 }
 
 export type TicketRemovalPayload =
@@ -283,6 +286,9 @@ export interface PublicTrackTicket {
   chat_state: { can_view: boolean; can_send: boolean; reason: string | null };
   /** Staff messages the requester has not read yet. */
   unread_count: number;
+  review_rating: number | null;
+  review_comment: string;
+  reviewed_at: string | null;
 }
 
 /** One row in the signed-in requester's ticket list. */
@@ -296,6 +302,8 @@ export interface PublicTrackListRow {
   created_at: string;
   last_message_at: string | null;
   unread_count: number;
+  review_rating: number | null;
+  review_comment: string;
 }
 
 /** What a verified session looks like: the address plus everything it owns. */

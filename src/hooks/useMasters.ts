@@ -61,12 +61,13 @@ export function useTeams() {
 }
 
 /** `roles` narrows the list, e.g. ["DEVELOPER"] for a routing dropdown. */
-export function useAssignableUsers(roles?: string[]) {
+export function useAssignableUsers(roles?: string[], enabled = true) {
   const key = roles?.length ? roles.join(",") : "";
   return useQuery<UserLite[]>({
     queryKey: [...queryKeys.users.assignable, key],
     queryFn: () => userApi.assignable(key || undefined),
     staleTime: MASTER_STALE_TIME,
+    enabled,
   });
 }
 

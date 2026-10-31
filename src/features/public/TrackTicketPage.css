@@ -207,12 +207,39 @@
 .track-signout-cancel { width:26px; height:28px; border:0; }
 .track-signout:disabled, .track-signout-cancel:disabled { opacity:.6; cursor:wait; }
 .track-resolution-actions { display:flex; align-items:stretch; flex-wrap:wrap; gap:8px; width:100%; }
-.track-close-confirmation { display:flex; align-items:stretch; gap:6px; }
+.track-close-confirmation { display:flex; align-items:center; flex-wrap:wrap; gap:7px; padding:6px 8px; border:1px solid #c8d9e8; border-radius:6px; background:var(--white); }
+.track-close-confirmation > span { color:var(--text); font-size:11px; font-weight:600; }
+.track-review-panel { display:flex; align-items:stretch; justify-content:stretch; overflow:hidden; background:var(--white); padding:0; }
+.track-review-panel-submitted { align-items:center; justify-content:center; }
+.track-review-card { width:100%; max-width:none; min-height:100%; padding:22px 30px 24px; border:0; border-radius:0; background:transparent; text-align:left; box-shadow:none; display:flex; flex-direction:column; justify-content:center; }
+.track-review-check { display:grid; place-items:center; width:38px; height:38px; margin-bottom:14px; border-radius:50%; background:#e5f6ee; color:#16805e; }
+.track-review-ticket { display:block; color:#607589; font:11px Consolas,monospace; }
+.track-review-card h2 { margin:22px 0 8px; text-align:center; font-size:22px; line-height:28px; color:var(--ink); }
+.track-review-copy { max-width:320px; margin:0 auto; color:var(--muted); font-size:12px; line-height:18px; text-align:center; }
+.track-review-stars { display:flex; justify-content:center; gap:7px; margin:22px 0 5px; }
+.track-review-stars button { display:grid; place-items:center; width:37px; height:37px; padding:2px; border:0; background:transparent; color:#ccd8e2; cursor:pointer; transition:color .15s ease,transform .15s ease; }
+.track-review-stars button:hover,.track-review-stars button:focus-visible,.track-review-stars button.selected { color:#e9ad37; transform:translateY(-2px); outline:none; }
+.track-review-rating-label { min-height:17px; margin:0 0 18px; color:var(--muted); font-size:11px; text-align:center; }
+.track-review-comment { display:flex; justify-content:space-between; margin-bottom:7px!important; color:var(--text)!important; font-size:12px!important; }
+.track-review-comment span { color:var(--muted); font-size:10px; font-weight:400; }
+.track-review-comment span.required { color:#b23a46; font-weight:700; }
+.track-review-card textarea { width:100%; min-height:76px; margin-bottom:13px; padding:10px 11px; resize:vertical; border:1px solid var(--line-strong); border-radius:6px; background:var(--white); color:var(--ink); font:12px "Track Inter",Arial,sans-serif; }
+.track-review-card textarea::placeholder { color:#8a9aaa; }
+.track-review-submit { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:42px; padding:10px 14px; border:0; border-radius:6px; background:#4b49dc; color:#fff; font-size:13px; font-weight:700; cursor:pointer; }
+.track-review-submit:hover:not(:disabled) { background:#3f3cc8; }
+.track-review-submit:disabled { cursor:not-allowed; opacity:.55; }
+.track-review-eyebrow { margin:0 0 8px; color:var(--blue); font-size:10px; font-weight:800; letter-spacing:.11em; text-align:center; }
+.track-review-success { width:100%; max-width:360px; padding:32px 20px; text-align:center; }
+.track-review-success-icon { display:grid; place-items:center; width:44px; height:44px; margin:0 auto 16px; border-radius:50%; background:#e5f6ee; color:#16805e; }
+.track-review-success h2 { margin:0 0 8px; font-size:20px; color:var(--ink); }
+.track-review-success>p:last-child { margin:0; color:var(--muted); font-size:12px; line-height:18px; }
 .track-reopen p { flex-basis:100%; min-width:0; line-height:1.6; }
 .track-resolution-actions .track-reopen-button { border:1px solid var(--line-strong); background:var(--white); color:var(--text); font-weight:600; }
-.track-confirm-close { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:8px 10px; border:1px solid #a2d1b6; border-radius:5px; background:#eaf6ee; color:#226a43; font-size:12px; font-weight:600; cursor:pointer; }
+.track-confirm-close { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:8px 10px; border:1px solid #8ac9a5; border-radius:5px; background:#e5f7ec; color:#14733f; font-size:12px; font-weight:700; cursor:pointer; }
 .track-confirm-close svg { flex:none; }
-.track-close-cancel { min-height:36px; padding:8px 12px; border:1px solid var(--line-strong); border-radius:5px; background:var(--white); color:var(--text); font-size:12px; font-weight:600; cursor:pointer; }
+.track-close-cancel { min-height:36px; padding:8px 12px; border:1px solid #aebdca; border-radius:5px; background:#f1f4f7; color:#344454; font-size:12px; font-weight:700; cursor:pointer; }
+.track-confirm-close:hover { background:#d4f1df; border-color:#63b984; }
+.track-close-cancel:hover { background:#e5ebf0; border-color:#8fa2b2; }
 .track-confirm-close:disabled, .track-reopen-button:disabled, .track-close-cancel:disabled { cursor:wait; opacity:.6; }
 .track-progress { margin:0; padding:0; list-style:none; }
 .track-progress-step { position:relative; min-height:48px; margin-left:9px; padding:0 0 18px 27px; border-left:1px solid var(--line); }
@@ -250,6 +277,11 @@
 .track-page[data-theme="dark"] .track-reopen p, .track-page[data-theme="dark"] .track-reopen-actions button:first-child { color:var(--text); }
 .track-page[data-theme="dark"] .track-reopen textarea, .track-page[data-theme="dark"] .track-panel-timeline { background:var(--white); color:var(--ink); }
 .track-page[data-theme="dark"] .track-confirm-close { background:#294836; color:#afe2bd; border-color:#52785f; }
+.track-page[data-theme="dark"] .track-close-cancel { background:#303b45; color:#e5edf3; border-color:#61717e; }
+.track-page[data-theme="dark"] .track-review-panel { background:var(--soft); }
+.track-page[data-theme="dark"] .track-review-check, .track-page[data-theme="dark"] .track-review-success-icon { background:#294836; color:#afe2bd; }
+.track-page[data-theme="dark"] .track-review-stars button { color:#64727d; }
+.track-page[data-theme="dark"] .track-review-stars button:hover, .track-page[data-theme="dark"] .track-review-stars button:focus-visible, .track-page[data-theme="dark"] .track-review-stars button.selected { color:#f1bd55; }
 .track-page[data-theme="dark"] .track-progress-step[data-state="complete"] { border-color:#416b51; }
 .track-page[data-theme="dark"] .track-progress-step[data-state="complete"] .track-progress-icon { background:#294836; border-color:#52785f; color:#afe2bd; }
 .track-page[data-theme="dark"] .track-progress-step:last-child { border-color:transparent; }

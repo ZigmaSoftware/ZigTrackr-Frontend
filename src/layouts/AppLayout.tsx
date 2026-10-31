@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -28,6 +28,7 @@ function readCollapsed(): boolean {
 export function AppLayout() {
   const { user, logout, can } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { theme, toggleTheme } = useTheme();
 
   const [collapsed, setCollapsed] = useState(readCollapsed);
@@ -101,7 +102,7 @@ export function AppLayout() {
                 <kbd className="hidden rounded border border-[var(--border)] px-1 text-[10px] md:inline">⌘K</kbd>
               </button>
 
-              {can("tickets.create.access") && can("tickets.ticket.create") ? (
+              {pathname.replace(/\/$/, "") !== "/tickets" && can("tickets.create.access") && can("tickets.ticket.create") ? (
                 <Button size="sm" onClick={() => setCreateOpen(true)}>
                   <Plus /> <span className="hidden sm:inline">Create Ticket</span>
                 </Button>

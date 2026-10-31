@@ -146,6 +146,8 @@ export const ticketApi = {
     post<PublicTrackTicket>("/tickets/public/track/reopen/", { ticket_no, reason }),
   publicClose: (ticket_no: string) =>
     post<PublicTrackTicket>("/tickets/public/track/close/", { ticket_no }),
+  publicReview: (ticket_no: string, payload: { rating: number; comment: string }) =>
+    post<PublicTrackTicket>("/tickets/public/track/review/", { ticket_no, ...payload }),
   publicSignout: () => post<null>("/tickets/public/track/signout/"),
 
   attachments: (id: string) =>

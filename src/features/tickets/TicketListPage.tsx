@@ -4,16 +4,16 @@ import { Link } from "react-router-dom";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
-  AlertOctagon, AlertTriangle, Archive, CheckCircle2, ChevronDown, FlaskConical, Inbox, Pause,
-  Play, PlayCircle, KeyRound, LifeBuoy, ListFilter, ClipboardList, RotateCcw,
-  Paperclip, Pencil, ArrowUpRight, LayoutList, Rows3, Columns3, Search,
+  AlertOctagon, AlertTriangle, Archive, CheckCircle2, ChevronDown,
+  FlaskConical, Hand, Inbox, Pause, Play, PlayCircle, KeyRound, LifeBuoy, ListFilter, ClipboardList, RotateCcw, Star,
+  Paperclip, Pencil, ArrowUpRight, LayoutList, Rows3, Columns3, Search, CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ticketApi } from "@/api/services";
 import { apiErrorMessage } from "@/api/client";
 import { queryKeys } from "@/api/queryKeys";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
-import { useCompanies } from "@/hooks/useMasters";
+import { useAssignableUsers, useCompanies } from "@/hooks/useMasters";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button, IconButton, Input, Select, Spinner } from "@/components/ui/primitives";
 import { DataTable, TruncatedCell, type Column } from "@/components/tables/DataTable";
@@ -21,7 +21,7 @@ import { Pagination } from "@/components/tables/Pagination";
 import { ErrorState } from "@/components/feedback/states";
 import { ConfirmDialog, Modal } from "@/components/feedback/Modal";
 import { formatDate } from "@/lib/dates";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/features/auth/AuthContext";
 import type { SupportTicketRow, TicketRemovalPayload } from "@/types";
 import { EmailAttachmentList } from "./EmailAttachmentList";
@@ -29,13 +29,16 @@ import { DeleteUnassignedTicketDialog } from "./dialogs/DeleteUnassignedTicketDi
 import { PriorityBadge } from "@/components/common/badges";
 import { ReviewAssignDialog } from "@/features/tickets/dialogs/ReviewAssignDialog";
 import { WorkDetailsDialog } from "@/features/tickets/dialogs/WorkDetailsDialog";
-import { TicketStatusBadge } from "@/features/tickets/TicketTableCells";
+import { TicketStatusBadge, LedgerStage, LedgerPriority, LedgerText } from "@/features/tickets/TicketTableCells";
 import { TicketEmailDescription } from "./TicketEmailDescription";
 import { IntakeReceived, IntakeSender, IntakeSource, IntakeType, IntakeWaiting } from "./TicketIntakeCells";
 import { intakeParams, intakeView, intakeViews } from "./ticketIntake";
+import { ledgerParams, ledgerScope, ledgerScopes, ledgerSource, ledgerType } from "./ticketLedger";
+import { TicketLedgerWorkspace } from "./TicketLedgerWorkspace";
 import type { TicketWorkAction as WorkAction } from "@/features/tickets/dialogs/TicketDetailDialog";
 import "./TicketWorkControl.css";
 import "./TicketIntakeFocus.css";
+import "./TicketLedgerWorkspace.css";
 
 const TicketDetailDialog = lazy(() => import("@/features/tickets/dialogs/TicketDetailDialog")
   .then((module) => ({ default: module.TicketDetailDialog })));
@@ -150,12 +153,13 @@ function TicketWorkControl({
   onAction: (action: WorkAction) => void;
   onOpen: () => void;
 }) {
+  const ledger = presetKey === "all";
   const status = row.effective_status || row.status;
   const canStart = row.allowed_actions.includes("IN_PROGRESS");
   const workActions: { kind: WorkAction; label: string; hint: string; icon: ReactNode }[] = status === "IN_PROGRESS"
     ? [
         { kind: "pending", label: "Move to pending", hint: "Awaiting information", icon: <Pause /> },
-        { kind: "hold", label: "Put on hold", hint: "Pause development", icon: <Pause /> },
+        { kind: "hold", label: "Put on hold", hint: "Pause development", icon: <Hand /> },
         { kind: "rectify", label: "Rectified - send to testing", hint: "Ready for verification", icon: <FlaskConical /> },
       ]
     : [
@@ -170,9 +174,9 @@ function TicketWorkControl({
     if (!canStart && availableActions.length === 0) {
       return (
         <button type="button" onClick={(event) => { event.stopPropagation(); onOpen(); }}
-          className="ticket-work-pill"
+          className="ticket-work-pill" data-running={ledger && active}
           title={active ? "View work in progress" : "View paused ticket"}>
-          <span className="ticket-work-ring" aria-hidden="true"><span /></span>
+          {ledger ? active ? <Play aria-hidden /> : status === "ON_HOLD" ? <Hand aria-hidden /> : <Pause aria-hidden /> : <span className="ticket-work-ring" aria-hidden="true"><span /></span>}
           <span className="ticket-work-pill-text">{active ? elapsedWorkTime(row.current_work_started_at, now) : status === "PENDING" ? "Pending" : "On hold"}</span>
           <ChevronDown className="ticket-work-caret" aria-hidden="true" />
         </button>
@@ -182,16 +186,16 @@ function TicketWorkControl({
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button type="button" onClick={(event) => event.stopPropagation()}
-            className="ticket-work-pill"
+            className="ticket-work-pill" data-running={ledger && active}
             aria-label={active ? `Work in progress for ${row.reference}. Change status` : `Paused work on ${row.reference}. Change status`}
             title={active ? "Work in progress - change status" : "Paused - change status"}>
-            <span className="ticket-work-ring" aria-hidden="true"><span /></span>
+            {ledger ? active ? <Play aria-hidden /> : status === "ON_HOLD" ? <Hand aria-hidden /> : <Pause aria-hidden /> : <span className="ticket-work-ring" aria-hidden="true"><span /></span>}
             <span className="ticket-work-pill-text">{active ? elapsedWorkTime(row.current_work_started_at, now) : status === "PENDING" ? "Pending" : "On hold"}</span>
             <ChevronDown className="ticket-work-caret" aria-hidden="true" />
           </button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content align="end" sideOffset={8} collisionPadding={12} className="ticket-work-popover">
+          <DropdownMenu.Content align="end" sideOffset={8} collisionPadding={12} className={cn("ticket-work-popover", ledger && "ticket-work-popover-ledger")}>
             <div className="ticket-work-popover-head">
               <span>WORK SESSION</span>
               <span className="ticket-work-live"><i />{active ? "IN PROGRESS" : status === "PENDING" ? "PENDING" : "ON HOLD"}</span>
@@ -230,7 +234,7 @@ function TicketWorkControl({
       <button type="button" disabled={starting} onClick={(event) => { event.stopPropagation(); onStart(); }}
         className="ticket-work-pill"
         title={`Start work on ${row.reference}`}>
-        <span className="ticket-work-ring ticket-work-ring-start" aria-hidden="true"><Play className="size-3 fill-current" /></span>
+        {ledger ? <Play aria-hidden /> : <span className="ticket-work-ring ticket-work-ring-start" aria-hidden="true"><Play className="size-3 fill-current" /></span>}
         <span className="ticket-work-pill-text">{starting ? "Starting..." : "Start work"}</span>
       </button>
     );
@@ -242,13 +246,13 @@ function TicketWorkControl({
         <DropdownMenu.Trigger asChild>
           <button type="button" className="ticket-work-pill"
             aria-label={`Verification actions for ${row.reference}`}>
-            <span className="ticket-work-ring ticket-work-ring-start" aria-hidden="true"><FlaskConical className="size-3.5" /></span>
+            {ledger ? <FlaskConical aria-hidden /> : <span className="ticket-work-ring ticket-work-ring-start" aria-hidden="true"><FlaskConical className="size-3.5" /></span>}
             <span className="ticket-work-pill-text">{status === "REOPENED" ? "Review reopen" : "Verify"}</span>
             <ChevronDown className="ticket-work-caret" aria-hidden="true" />
           </button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content align="end" sideOffset={8} collisionPadding={12} className="ticket-work-popover">
+          <DropdownMenu.Content align="end" sideOffset={8} collisionPadding={12} className={cn("ticket-work-popover", ledger && "ticket-work-popover-ledger")}>
             <DropdownMenu.Label className="ticket-work-menu-label">VERIFICATION</DropdownMenu.Label>
             <DropdownMenu.Item onSelect={() => onAction("return")} className="ticket-work-menu-item">
               <span className="ticket-work-menu-icon"><RotateCcw /></span>
@@ -268,23 +272,24 @@ function TicketWorkControl({
     : status === "REOPENED" ? (presetKey === "testing" ? "Review reopen" : "View")
       : ["CLOSED", "REJECTED"].includes(status) ? "View" : "Open";
   if (status === "TESTING" || (status === "REOPENED" && presetKey === "testing")) {
-    return <button type="button" className="ticket-work-pill" title={`${label} ${row.reference}`}
+    return <button type="button" className={cn("ticket-work-pill", ledger && "ledger-under-review")} title={`${label} ${row.reference}`}
       onClick={(event) => {
         event.stopPropagation();
-        if (status === "TESTING" && canRetake) onAction("retake");
+        if (status === "TESTING" && canRetake && !ledger) onAction("retake");
         else onOpen();
       }}>
-      <span className="ticket-work-ring ticket-work-ring-start" aria-hidden="true"><FlaskConical className="size-3.5" /></span>
+      {ledger ? <FlaskConical aria-hidden /> : <span className="ticket-work-ring ticket-work-ring-start" aria-hidden="true"><FlaskConical className="size-3.5" /></span>}
       <span className="ticket-work-pill-text">{label}</span>
     </button>;
   }
-  return <Button size="sm" variant={label === "View" ? "ghost" : "outline"}
-    onClick={(event) => { event.stopPropagation(); onOpen(); }}>{label}</Button>;
+  return <Button size="sm" className={ledger ? "ledger-work-button" : undefined} variant={label === "View" ? "ghost" : "outline"}
+    onClick={(event) => { event.stopPropagation(); onOpen(); }}>{ledger ? <ArrowUpRight aria-hidden /> : null}{label}</Button>;
 }
 
 export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset }) {
   const { can, hasRole, user } = useAuth();
   const companies = useCompanies();
+  const developers = useAssignableUsers(["DEVELOPER"], presetKey === "all");
   const isDeveloper = hasRole("DEVELOPER");
   const queryClient = useQueryClient();
   const preset = PRESETS[presetKey] ?? PRESETS.all;
@@ -298,6 +303,7 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
   const [attachmentTicket, setAttachmentTicket] = useState<SupportTicketRow | null>(null);
   const [ticketToStart, setTicketToStart] = useState<SupportTicketRow | null>(null);
   const [editingWork, setEditingWork] = useState<SupportTicketRow | null>(null);
+  const [exporting, setExporting] = useState(false);
   const canViewAttachments = can("bugs.attachment.view");
   // Seeded from ?ticket= so an old /tickets/detail/:id link opens the dialog.
   const [detailTicketId, setDetailTicketId] = useState<string | null>(
@@ -310,9 +316,18 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [isUnassigned]);
-  const { filters, setFilters, clearFilters, activeCount } = useUrlFilters({ ordering: "-created_at", limit: isUnassigned ? 6 : 25 });
+  const { filters, setFilters, clearFilters, activeCount } = useUrlFilters({ ordering: presetKey === "all" ? "effective_expected_closure_date" : "-created_at", limit: isUnassigned ? 6 : presetKey === "all" ? 8 : 25 });
+  const selectedLedgerScope = ledgerScope(filters.scope);
   const selectedIntakeView = intakeView(filters.intake_view);
-  const queryParams = useMemo(() => isUnassigned ? intakeParams(filters, selectedIntakeView) : ({ ...filters, ...preset.filters, submodule: presetKey }), [filters, preset.filters, presetKey, isUnassigned, selectedIntakeView]);
+  const queryParams = useMemo(() => {
+    if (isUnassigned) return intakeParams(filters, selectedIntakeView);
+    if (presetKey === "all") return ledgerParams(filters);
+    return { ...filters, ...preset.filters, submodule: presetKey };
+  }, [filters, preset.filters, presetKey, isUnassigned, selectedIntakeView]);
+  const ledgerCounts = useQueries({ queries: presetKey === "all" ? ledgerScopes.map((scope) => {
+    const params = ledgerParams({ ...filters, status: "", page: 1, limit: 1 }, scope.key);
+    return { queryKey: queryKeys.tickets.list(params), queryFn: () => ticketApi.list(params), staleTime: 30_000, refetchInterval: 30_000, select: (response: { count: number }) => response.count };
+  }) : [] });
   const intakeCounts = useQueries({ queries: isUnassigned ? intakeViews.map((view) => {
     const params = intakeParams({ ...filters, ticket_type: "", needs_review: undefined, page: 1, limit: 1 }, view.key);
     return { queryKey: queryKeys.tickets.list(params), queryFn: () => ticketApi.list(params), staleTime: 30_000, refetchInterval: 30_000, select: (response: { count: number }) => response.count };
@@ -356,6 +371,33 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
   function openTicket(id: string, action: WorkAction | null = null) {
     setRequestedAction(action);
     setDetailTicketId(id);
+  }
+
+  async function exportLedger() {
+    setExporting(true);
+    try {
+      const records: SupportTicketRow[] = [];
+      let page = 1;
+      let pages = 1;
+      do {
+        const result = await ticketApi.list({ ...queryParams, page, limit: 200 });
+        records.push(...result.results);
+        pages = result.total_pages;
+        page += 1;
+      } while (page <= pages);
+      const csvValue = (value: unknown) => {
+        const text = String(value ?? "");
+        return `"${(/^[=+@-]/.test(text.trimStart()) ? "'" : "") + text.replaceAll('"', '""')}"`;
+      };
+      const contents = [["Ticket", "Request", "Company", "Project", "Module", "Owner", "Source", "Type", "Stage", "Priority", "Due date"],
+        ...records.map((row) => [row.reference, row.title, row.company?.name, row.project?.name, row.module?.name, row.owner?.name, row.source, row.ticket_type, row.effective_status || row.status, row.priority?.name, row.effective_expected_closure_date || row.expected_closure_date]),
+      ].map((record) => record.map(csvValue).join(",")).join("\r\n");
+      const url = URL.createObjectURL(new Blob(["\ufeff", contents], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url; link.download = "all-tickets.csv"; link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) { toast.error(apiErrorMessage(error, "Could not export tickets.")); }
+    finally { setExporting(false); }
   }
 
   /* The unassigned queue answers a different question from every other list:
@@ -555,6 +597,21 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
         );
       },
     },
+    ...(presetKey === "closed" ? [{
+      key: "requester_rating",
+      header: "Review",
+      width: "w-48",
+      hideBelow: "lg" as const,
+      cell: (row: SupportTicketRow) => row.requester_rating ? (
+        <div className="min-w-0">
+          <div className="flex items-center gap-1 text-[12px] font-semibold text-amber-600 dark:text-amber-300" aria-label={`${row.requester_rating} out of 5 stars`}>
+            <Star className="size-3.5 fill-current" aria-hidden />
+            <span>{row.requester_rating}/5</span>
+          </div>
+          {row.requester_review_comment ? <span title={row.requester_review_comment}><TruncatedCell maxWidth="max-w-[170px]" className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">{row.requester_review_comment}</TruncatedCell></span> : null}
+        </div>
+      ) : <span className="text-[12px] text-[var(--muted-foreground)]">No review</span>,
+    }] : []),
     {
       key: "actions",
       header: "",
@@ -584,8 +641,124 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
     },
   ], [presetKey, isDeveloper, user?.id, can, now, startWorkIsPending, startingTicketId]);
 
+  /* All Tickets reads as a work ledger rather than a wide attribute grid: six
+     columns that each answer one question — what the request is, what it says,
+     who owns it, where it stands, when it is due, and what to do next. The
+     fields that lost their own column are stacked inside the one they belong
+     to, so nothing is dropped, only grouped. */
+  const ledgerColumns = useMemo<Column<SupportTicketRow>[]>(() => [
+    {
+      key: "title",
+      header: "Request / project",
+      width: "w-[25%]",
+      cell: (row) => (
+        <div className="ledger-request">
+          <button type="button" className="ledger-request-title"
+            onClick={(event) => { event.stopPropagation(); openTicket(row.id); }}><LedgerText value={row.title} /></button>
+          <div className="ledger-request-meta">
+            <span className="font-mono">{row.reference}</span>
+            {row.company?.name || row.module?.name ? <LedgerText lines={1} value={[row.company?.name, row.module?.name].filter(Boolean).join(" / ")} /> : null}
+          </div>
+          <p className="ledger-requester">
+            <LedgerText lines={1} value={`${row.reported_by_name || row.reported_by?.name || row.reported_by_email || "Unknown requester"}${row.project?.name ? ` / ${row.project.name}` : ""}`} />
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "description",
+      header: "Description",
+      width: "w-[23%]",
+      cell: (row) => <TicketEmailDescription ticket={row} variant="ledger" />,
+    },
+    {
+      key: "owner",
+      header: "Owner / source",
+      align: "center",
+      width: "w-[17%]",
+      cell: (row) => (
+        <div className="ledger-person">
+          <span className="ledger-avatar" data-tone={(row.owner?.name || "").split("").reduce((sum, char) => sum + char.charCodeAt(0), 0) % 4} aria-hidden>{initials(row.owner?.name || "?")}</span>
+          <span>
+            <strong><LedgerText lines={1} value={row.owner?.name || "Unassigned"} /></strong>
+            <small><LedgerText lines={1} value={`${ledgerSource(row.source)} / ${ledgerType(row.ticket_type)}`} /></small>
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Stage / priority",
+      align: "center",
+      width: "w-[13%]",
+      cell: (row) => (
+        <div className="ledger-stage-stack">
+          <LedgerStage status={row.effective_status || row.status} label={(row.effective_status || row.status) === "TESTING" ? "Under review" : undefined} />
+          {row.priority
+            ? <LedgerPriority code={row.priority.code} label={row.priority.name} />
+            : null}
+        </div>
+      ),
+    },
+    {
+      key: "expected_closure_date",
+      header: "Delivery",
+      align: "center",
+      width: "w-[12%]",
+      cell: (row) => {
+        const due = row.effective_expected_closure_date || row.expected_closure_date;
+        return (
+          <div className="ledger-stacked">
+            {due ? (
+              <span className={cn("ledger-due", row.is_overdue && "ledger-due-late")}
+                title={row.is_overdue ? `${row.overdue_days}d late` : undefined}>
+                <CalendarDays aria-hidden />{new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(new Date(`${due}T00:00:00`))}
+              </span>
+            ) : <span className="text-[var(--muted-foreground)]">—</span>}
+            <span className="ledger-age">
+              {row.age_days}d old{row.is_overdue ? " / Past due" : ""}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "actions",
+      header: "Work",
+      align: "right",
+      width: "w-[10%]",
+      cell: (row) => (
+        <div className="ledger-work-actions" onClick={(event) => event.stopPropagation()}>
+          <TicketWorkControl
+            row={row}
+            now={now}
+            presetKey={presetKey}
+            starting={startWorkIsPending && startingTicketId === row.id}
+            canVerify={can("tickets.ticket.verify_close") && can("tickets.ticket.add_update")}
+            canRetake={isDeveloper && row.owner?.id === user?.id && !row.needs_review
+              && row.allowed_actions.includes("IN_PROGRESS") && can("tickets.ticket.add_update")}
+            onStart={() => setTicketToStart(row)}
+            onAction={(action) => openTicket(row.id, action)}
+            onOpen={() => openTicket(row.id)}
+          />
+          {row.can_edit_details ? <IconButton label="Edit work details" onClick={() => setEditingWork(row)}>
+            <Pencil className="size-4" />
+          </IconButton> : null}
+        </div>
+      ),
+    },
+  ], [presetKey, isDeveloper, user?.id, can, now, startWorkIsPending, startingTicketId]);
+
   return (
     <div className={isUnassigned ? cn("ticket-intake-focus", compactIntake && "intake-density-compact", intakeColumns.includes("description") && "intake-with-description", user?.is_superuser && "intake-multi-company") : undefined}>
+      {presetKey === "all" ? <TicketLedgerWorkspace title={personalView ? "My tickets" : "All tickets"}
+        scope={selectedLedgerScope} counts={Object.fromEntries(ledgerScopes.map((scope, index) => [scope.key, ledgerCounts[index]?.data]))}
+        filters={filters} setFilters={setFilters} resetFilters={clearFilters} companies={companies.data ?? []} developers={developers.data ?? []}
+        canChooseCompany={Boolean(user?.is_superuser)}
+        onExport={() => void exportLedger()} exporting={exporting} count={data?.count ?? 0} page={data?.page ?? filters.page} totalPages={data?.total_pages ?? 1}>
+        {isError ? <ErrorState onRetry={() => refetch()} /> : <DataTable columns={ledgerColumns} layout="fit" stickyHeader={false} rows={data?.results ?? []}
+          rowKey={(row) => row.id} rowClassName={(row) => (row.effective_status || row.status) === "TESTING" ? "ledger-row-under-review" : ""} isLoading={isLoading} skeletonRows={8} onRowClick={(row) => openTicket(row.id)} emptyTitle="No matching tickets" emptyDescription="Try another search or clear your filters." />}
+      </TicketLedgerWorkspace> : <>
       <PageHeader
         className={isUnassigned ? "intake-page-heading" : undefined}
         title={isUnassigned ? "Unassigned tickets" : personalView ? "My Tickets" : preset.title}
@@ -739,6 +912,7 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
         )}
         </div>
       </div>
+      </>}
 
       {detailTicketId !== null ? (
         <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-black/30" role="status" aria-label="Loading ticket"><Spinner className="size-6 text-white" /></div>}>
@@ -753,6 +927,9 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
             ticketId={detailTicketId}
             showVerifyClose={presetKey === "testing"}
             initialAction={requestedAction}
+            variant={presetKey === "all" ? "ledger" : "default"}
+            onStartWork={(ticket) => { setDetailTicketId(null); setTicketToStart(ticket); }}
+            onEditWork={(ticket) => { setDetailTicketId(null); setEditingWork(ticket); }}
           />
         </Suspense>
       ) : null}

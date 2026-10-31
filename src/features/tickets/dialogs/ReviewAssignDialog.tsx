@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ticketApi } from "@/api/services";
 import { apiErrorMessage } from "@/api/client";
 import { queryKeys } from "@/api/queryKeys";
-import { Button, IconButton, Label, Select } from "@/components/ui/primitives";
+import { Button, IconButton, Label, Select, Textarea } from "@/components/ui/primitives";
 import { useAssignableUsers } from "@/hooks/useMasters";
 import { useAuth } from "@/features/auth/AuthContext";
 import type { SupportTicketRow } from "@/types";
@@ -28,6 +28,7 @@ export function ReviewAssignDialog({ open, onOpenChange, ticket, onNotATicket, o
   const queryClient = useQueryClient();
   const [type, setType] = useState("");
   const [owner, setOwner] = useState("");
+  const [remarks, setRemarks] = useState("");
   const ticketId = ticket?.id;
   const ticketType = ticket?.ticket_type;
   const canAssign = can("tickets.ticket.classify");
@@ -36,6 +37,7 @@ export function ReviewAssignDialog({ open, onOpenChange, ticket, onNotATicket, o
     if (open) {
       setType(ticketType === "UNKNOWN" ? "" : ticketType ?? "");
       setOwner("");
+      setRemarks("");
     }
   }, [open, ticketId, ticketType]);
   useEffect(() => {
@@ -51,7 +53,7 @@ export function ReviewAssignDialog({ open, onOpenChange, ticket, onNotATicket, o
     };
   }, [open, ticketId]);
   const assign = useMutation({
-    mutationFn: () => ticketApi.review(ticket!.id, { ticket_type: type, owner }),
+    mutationFn: () => ticketApi.review(ticket!.id, { ticket_type: type, owner, remarks: remarks.trim() }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.tickets.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
@@ -95,6 +97,11 @@ export function ReviewAssignDialog({ open, onOpenChange, ticket, onNotATicket, o
                       <option value="">{users.isLoading ? "Loading developers..." : "Select developer"}</option>
                       {choices.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
                     </Select></div></div>
+                <div className="focus-review-remarks"><Label htmlFor="ra_remarks">Remarks <span className="focus-review-optional">(optional)</span></Label>
+                  <Textarea id="ra_remarks" className="focus-review-remarks-input" rows={3} maxLength={2000}
+                    placeholder="Add a note for the developer..." value={remarks} disabled={assign.isPending}
+                    onChange={(event) => setRemarks(event.target.value)} />
+                </div>
                 {users.isError ? <Button type="button" variant="link" onClick={() => void users.refetch()}>Retry loading developers</Button> : null}
                 <Button type="submit" disabled={!type || !choices.some((choice) => choice.id === owner) || users.isError} loading={assign.isPending}>
                   <UserRoundCheck /> Assign request <ArrowRight />

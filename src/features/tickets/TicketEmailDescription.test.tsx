@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import * as Tooltip from "@radix-ui/react-tooltip";
 import { describe, expect, it } from "vitest";
 import type { SupportTicketRow } from "@/types";
 import { TicketEmailDescription } from "./TicketEmailDescription";
@@ -9,6 +10,18 @@ const original = { id: "mail-1", kind: "ORIGINAL" as const, from_name: "Dimple",
   body: "Dear Team,\n\nFull mail text.\n\nRegards,\nDimple\n\nOn Friday, Support wrote:\n> Please retry." };
 
 describe("full intake email description", () => {
+  it("shows a clean ledger preview and one zoom button without timestamps or replies", () => {
+    const markup = renderToStaticMarkup(<Tooltip.Provider><TicketEmailDescription variant="ledger" ticket={{ ...ticket, description_messages: [original, { ...original, id: "reply-2", kind: "REPLY", body: "Reply text" }] }} /></Tooltip.Provider>);
+    expect(markup).toContain('class="ledger-description"');
+    expect(markup).toContain("Full mail text.");
+    expect(markup).not.toContain("Reply text");
+    expect(markup).not.toContain("<time");
+    expect(markup.match(/<button/g)).toHaveLength(1);
+    expect(markup).toContain("sender@example.com");
+    expect(markup).toContain('class="ledger-description-tools"');
+    expect(markup.indexOf("sender@example.com")).toBeLessThan(markup.indexOf('class="ledger-description-zoom"'));
+    expect(markup.indexOf('class="ledger-description-tools"')).toBeLessThan(markup.indexOf('class="ledger-clamped-text ledger-description-text"'));
+  });
   it("retains greetings, signatures, quoted history and line breaks", () => {
     const markup = renderToStaticMarkup(<TicketEmailDescription ticket={{ ...ticket, description_messages: [original] }} />);
     expect(markup).toContain("Dear Team,\n\nFull mail text.");

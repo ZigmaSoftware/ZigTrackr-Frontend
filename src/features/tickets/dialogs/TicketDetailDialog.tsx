@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Tabs from "@radix-ui/react-tabs";
 import {
-  Bot, CircleAlert, FlaskConical, GitCommit,
-  MessageSquare, MessageSquarePlus, Paperclip, PlayCircle,
+  Bot, CircleAlert, FlaskConical, GitCommit, Hand,
+  MessageSquare, MessageSquarePlus, Paperclip, Pause, Pencil, Play, PlayCircle,
   Mail as MailIcon, Maximize2, RotateCcw, ShieldCheck, UserCheck, UserRoundCheck, X, XCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -26,6 +26,7 @@ import { mergeChatMessages } from "@/lib/ticketChat";
 import { TicketChat } from "@/components/chat/TicketChat";
 import { EmailAttachmentList } from "../EmailAttachmentList";
 import { cn } from "@/lib/utils";
+import { LedgerPriority, LedgerStage } from "../TicketTableCells";
 import type { RequestMessage, SupportTicketDetail, TicketChatMessage, TicketTimelineEvent } from "@/types";
 import "./TicketDetailDialog.css";
 
@@ -54,9 +55,12 @@ export interface TicketDetailDialogProps {
   ticketId: string | null;
   showVerifyClose: boolean;
   initialAction?: TicketWorkAction | null;
+  variant?: "default" | "ledger";
+  onStartWork?: (ticket: SupportTicketDetail) => void;
+  onEditWork?: (ticket: SupportTicketDetail) => void;
 }
 
-export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClose, initialAction }: TicketDetailDialogProps) {
+export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClose, initialAction, variant = "default", onStartWork, onEditWork }: TicketDetailDialogProps) {
   const [action, setAction] = useState<DialogKind | null>(initialAction ?? null);
 
   const { data: ticket, isLoading, isError, refetch } = useQuery({
@@ -78,12 +82,12 @@ export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClo
                        data-[state=open]:animate-in data-[state=open]:fade-in-0"
           />
           <Dialog.Content
-            className="fixed left-1/2 top-1/2 z-[60] flex h-[calc(100vh-3rem)] w-[calc(100vw-2rem)]
+            className={cn(`fixed left-1/2 top-1/2 z-[60] flex h-[calc(100vh-3rem)] w-[calc(100vw-2rem)]
                        max-w-4xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden
                        rounded-xl border border-[var(--border)] bg-[var(--card)]
                        shadow-[var(--shadow-pop)]
                        data-[state=open]:animate-in data-[state=open]:fade-in-0
-                       data-[state=open]:zoom-in-95"
+                       data-[state=open]:zoom-in-95`, variant === "ledger" && "ticket-detail-ledger")}
           >
             {isLoading || !ticket ? (
               <LoadingShell isError={isError} onRetry={() => refetch()} onClose={() => onOpenChange(false)} />
@@ -92,6 +96,9 @@ export function TicketDetailDialog({ open, onOpenChange, ticketId, showVerifyClo
                 ticket={ticket}
                 onClose={() => onOpenChange(false)}
                 onAction={setAction}
+                variant={variant}
+                onStartWork={onStartWork}
+                onEditWork={onEditWork}
               />
             )}
           </Dialog.Content>
@@ -141,11 +148,14 @@ function LoadingShell({
 /* ---- HEADER + TABS ---- */
 
 function TicketDetailBody({
-  ticket, onClose, onAction,
+  ticket, onClose, onAction, variant, onStartWork, onEditWork,
 }: {
   ticket: SupportTicketDetail;
   onClose: () => void;
   onAction: (kind: DialogKind) => void;
+  variant: "default" | "ledger";
+  onStartWork?: (ticket: SupportTicketDetail) => void;
+  onEditWork?: (ticket: SupportTicketDetail) => void;
 }) {
   const { user, can, hasRole } = useAuth();
   const [tab, setTab] = useState("timeline");
@@ -153,7 +163,9 @@ function TicketDetailBody({
   const isOwner = ticket.owner?.id === user?.id;
   const canManage = can("tickets.ticket.mutate_all") || can("tickets.ticket.classify")
     || can("tickets.ticket.assign");
-  const terminal = ["CLOSED", "REJECTED"].includes(ticket.status);
+  const effectiveStatus = ticket.effective_status || ticket.status;
+  const terminal = ["CLOSED", "REJECTED"].includes(effectiveStatus);
+  const ledger = variant === "ledger";
 
   const canAssign = !ticket.needs_review && !ticket.owner && !terminal
     && can("tickets.ticket.assign");
@@ -184,17 +196,35 @@ function TicketDetailBody({
     return options;
   }, [ticket, can, user]);
 
+  const workActions: { kind: StatusAction; label: string; icon: React.ReactNode }[] = [];
+  if (ledger && !terminal && !["TESTING", "REOPENED"].includes(effectiveStatus)) {
+    if (ticket.allowed_actions.includes("TESTING")) workActions.push({ kind: "rectify", label: "Rectified - send to testing", icon: <FlaskConical /> });
+    if (ticket.allowed_actions.includes("PENDING")) workActions.push({ kind: "pending", label: "Move to pending", icon: <Pause /> });
+    if (ticket.allowed_actions.includes("ON_HOLD")) workActions.push({ kind: "hold", label: "Put on hold", icon: <Hand /> });
+  }
+  const canStart = ledger && !terminal && !["IN_PROGRESS", "TESTING", "REOPENED"].includes(effectiveStatus) && ticket.allowed_actions.includes("IN_PROGRESS") && onStartWork;
+  const canEdit = ledger && ticket.can_edit_details && onEditWork;
+  const showEdit = ledger && onEditWork && ["NEW", "CONFIRMED", "ASSIGNED", "APPROVED", "PENDING_APPROVAL", "IN_PROGRESS", "PENDING", "ON_HOLD"].includes(effectiveStatus);
+
   return (
     <>
-      <header className="shrink-0 border-b border-[var(--border)]">
+      <header className="ticket-detail-header shrink-0 border-b border-[var(--border)]">
         <div className="flex items-start justify-between gap-4 px-5 pb-4 pt-4">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
+            {/* The title leads, with the identifiers on one line beneath it, so
+                the eye lands on what the ticket is before how it is labelled. */}
+            <Dialog.Title className="truncate text-lg font-semibold tracking-tight">
+              {ticket.title}
+            </Dialog.Title>
+            <Dialog.Description className="sr-only">
+              From {ticket.reported_by_name || ticket.reported_by_email || "Unknown sender"}
+              {" · "}{formatDateTime(ticket.mail_received_at || ticket.created_at)}
+            </Dialog.Description>
+            <div className="ticket-detail-identifiers mt-1.5 flex flex-wrap items-center gap-2">
               <span className="font-mono text-[12px] font-semibold text-[var(--muted-foreground)]">
                 {ticket.reference}
               </span>
-              <TypePill type={ticket.ticket_type} />
-              <StatusPill status={ticket.effective_status || ticket.status} />
+              {ledger ? <><LedgerStage status={effectiveStatus} label={effectiveStatus === "TESTING" ? "Under review" : undefined} /><LedgerPriority code={ticket.priority?.code} label={ticket.priority?.name} /></> : <><TypePill type={ticket.ticket_type} /><StatusPill status={effectiveStatus} /></>}
               {isOwner && hasRole("DEVELOPER") && (ticket.effective_status || ticket.status) === "IN_PROGRESS" ? (
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
                   <PlayCircle className="size-3" /> Working now
@@ -205,13 +235,6 @@ function TicketDetailBody({
               </span>
               {ticket.needs_review ? <Pill tone="warn">Needs review</Pill> : null}
             </div>
-            <Dialog.Title className="mt-2 truncate text-lg font-semibold tracking-tight">
-              {ticket.title}
-            </Dialog.Title>
-            <Dialog.Description className="sr-only">
-              From {ticket.reported_by_name || ticket.reported_by_email || "Unknown sender"}
-              {" · "}{formatDateTime(ticket.mail_received_at || ticket.created_at)}
-            </Dialog.Description>
           </div>
           <IconButton label="Close dialog" onClick={onClose}><X /></IconButton>
         </div>
@@ -219,8 +242,13 @@ function TicketDetailBody({
 
       <RequestConversation messages={ticket.request_messages} onAttachments={() => setTab("attachments")} />
 
-      {canAssign || statusActions.length > 0 ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] px-5 py-3">
+      {canAssign || statusActions.length > 0 || workActions.length > 0 || canStart || showEdit ? (
+        <div className="ticket-detail-actions flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] px-5 py-3">
+          {canStart ? <Button size="sm" onClick={() => onStartWork?.(ticket)}><Play />{["PENDING", "ON_HOLD"].includes(effectiveStatus) ? "Resume work" : "Start work"}</Button> : null}
+          {workActions.map((option, index) => <Button key={option.kind} size="sm" variant={!canStart && index === 0 ? "default" : "outline"} onClick={() => onAction(option.kind)}>{option.icon}{option.label}</Button>)}
+          {showEdit ? <span title={canEdit ? "Edit work details" : "Only the assigned developer can edit work details before rectification."}>
+            <IconButton label="Edit work details" variant="outline" disabled={!canEdit} onClick={() => onEditWork?.(ticket)}><Pencil /></IconButton>
+          </span> : null}
           {canAssign ? (
             <Button size="sm" variant="outline" onClick={() => onAction("assign")}>
               <UserRoundCheck /> Assign
@@ -236,7 +264,7 @@ function TicketDetailBody({
       ) : null}
 
       <Tabs.Root value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
-        <Tabs.List className="flex shrink-0 gap-1 overflow-x-auto border-b border-[var(--border)] px-5">
+        <Tabs.List className="ticket-detail-tabs flex shrink-0 gap-6 overflow-x-auto border-b border-[var(--border)] px-5 pt-1">
           {[
             ["timeline", "Activity timeline"],
             ["chat", "Chat"],
@@ -251,12 +279,14 @@ function TicketDetailBody({
                          data-[state=active]:text-[var(--foreground)]"
             >
               {label}
+              {ledger && value === "attachments" && Boolean(ticket.email_attachment_count) ? <span className="ledger-detail-tab-count">{ticket.email_attachment_count}</span> : null}
             </Tabs.Trigger>
           ))}
         </Tabs.List>
 
         <div className="ticket-detail-tab-panel min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <Tabs.Content value="timeline" className="outline-none">
+            {ledger && ["PENDING", "ON_HOLD", "REOPENED"].includes(effectiveStatus) ? <p className="ledger-detail-stage-note"><LedgerStage status={effectiveStatus} />{effectiveStatus === "REOPENED" ? "Awaiting verification of the reported issue." : "Work is paused. The next stage remains available when work resumes."}</p> : null}
             <TimelineTab ticket={ticket} />
           </Tabs.Content>
           <Tabs.Content value="chat" className="h-full min-h-0 outline-none">
@@ -277,7 +307,7 @@ function RequestConversation({ messages, onAttachments }: {
 }) {
   const [zoomed, setZoomed] = useState(false);
   return <>
-    <section className="shrink-0 border-b border-[var(--border)] px-5 py-3">
+    <section className="ticket-request-details shrink-0 border-b border-[var(--border)] px-5 py-3">
     <h3 className="mb-2 text-[13px] font-semibold">Request details</h3>
     <ol className="max-h-44 space-y-3 overflow-y-auto pr-2">
       {messages.map((item, index) => <li key={item.id} className={cn(

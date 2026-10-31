@@ -4,6 +4,15 @@ import { cn } from "@/lib/utils";
 
 const PREVIEW_TOOLTIP_CLASS = "z-50 max-w-sm rounded-lg border border-sky-400/20 bg-slate-950 px-3 py-2 text-[12px] leading-5 text-white shadow-xl";
 
+export function LedgerText({ value, className, lines = 2 }: { value: string; className?: string; lines?: 1 | 2 }) {
+  return <Tooltip.Root delayDuration={180}>
+    <Tooltip.Trigger asChild><span tabIndex={0} className={cn("ledger-clamped-text", className)} style={{ WebkitLineClamp: lines }}>{value}</span></Tooltip.Trigger>
+    <Tooltip.Portal><Tooltip.Content className="ledger-text-tooltip" side="top" sideOffset={8} collisionPadding={16}>
+      <div className="ledger-tooltip-body">{value}</div><Tooltip.Arrow className="ledger-tooltip-arrow" />
+    </Tooltip.Content></Tooltip.Portal>
+  </Tooltip.Root>;
+}
+
 export function RequestPreview({ value, maxWidth = "max-w-[320px]" }: { value: string; maxWidth?: string }) {
   return (
     <Tooltip.Root delayDuration={120}>
@@ -76,4 +85,38 @@ export function TicketStatusBadge({ status }: { status: string }) {
         ? "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
         : "border-[var(--border)] bg-[var(--secondary)] text-[var(--secondary-foreground)]";
   return <span className={cn("inline-flex rounded-md border px-2 py-1 text-[11px] font-medium", tone)}>{status.replaceAll("_", " ")}</span>;
+}
+
+/* The work ledger labels stage with a tinted dot-pill and priority with a bar
+   glyph, rather than the boxed badges the other tables use. Kept separate so
+   those tables are untouched. */
+const LEDGER_STAGE_TONE: Record<string, string> = {
+  NEW: "ledger-stage-blue", CONFIRMED: "ledger-stage-blue", ASSIGNED: "ledger-stage-blue",
+  APPROVED: "ledger-stage-blue", IN_PROGRESS: "ledger-stage-amber", PENDING: "ledger-stage-gray",
+  ON_HOLD: "ledger-stage-orange", PENDING_APPROVAL: "ledger-stage-amber",
+  NEEDS_REVIEW: "ledger-stage-amber", TESTING: "ledger-stage-violet",
+  REOPENED: "ledger-stage-red", RESOLVED: "ledger-stage-green",
+  COMPLETED: "ledger-stage-green", CLOSED: "ledger-stage-green", REJECTED: "ledger-stage-red",
+};
+
+function titleCase(value: string) {
+  const text = value.replaceAll("_", " ").toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+export function LedgerStage({ status, label }: { status: string; label?: string }) {
+  return (
+    <span className={cn("ledger-stage", label === "Under review" ? "ledger-stage-under-review" : LEDGER_STAGE_TONE[status] || "ledger-stage-gray")}>
+      <i aria-hidden />{label || titleCase(status)}
+    </span>
+  );
+}
+
+export function LedgerPriority({ code, label }: { code?: string | null; label?: string | null }) {
+  if (!label) return null;
+  const key = (code || label).toUpperCase();
+  const tone = key.startsWith("CRIT") ? "ledger-priority-critical"
+    : key.startsWith("HIGH") ? "ledger-priority-high"
+      : key.startsWith("MED") ? "ledger-priority-medium" : "ledger-priority-low";
+  return <span className={cn("ledger-priority", tone)}><i aria-hidden />{titleCase(label)}</span>;
 }
