@@ -29,11 +29,11 @@ import { DeleteUnassignedTicketDialog } from "./dialogs/DeleteUnassignedTicketDi
 import { PriorityBadge } from "@/components/common/badges";
 import { ReviewAssignDialog } from "@/features/tickets/dialogs/ReviewAssignDialog";
 import { WorkDetailsDialog } from "@/features/tickets/dialogs/WorkDetailsDialog";
-import { TicketStatusBadge, LedgerStage, LedgerPriority, LedgerText } from "@/features/tickets/TicketTableCells";
+import { TicketStatusBadge, LedgerStage, LedgerPriority, LedgerText, LedgerPlain } from "@/features/tickets/TicketTableCells";
 import { TicketEmailDescription } from "./TicketEmailDescription";
 import { IntakeReceived, IntakeSender, IntakeSource, IntakeType, IntakeWaiting } from "./TicketIntakeCells";
 import { intakeParams, intakeView, intakeViews } from "./ticketIntake";
-import { ledgerParams, ledgerScope, ledgerScopes, ledgerSource, ledgerType } from "./ticketLedger";
+import { ledgerParams, ledgerScope, ledgerScopes, ledgerSource, ledgerType, scopesForPreset } from "./ticketLedger";
 import { TicketLedgerWorkspace } from "./TicketLedgerWorkspace";
 import type { TicketWorkAction as WorkAction } from "@/features/tickets/dialogs/TicketDetailDialog";
 import "./TicketWorkControl.css";
@@ -153,7 +153,7 @@ function TicketWorkControl({
   onAction: (action: WorkAction) => void;
   onOpen: () => void;
 }) {
-  const ledger = presetKey === "all";
+  const ledger = presetKey !== "unassigned";
   const status = row.effective_status || row.status;
   const canStart = row.allowed_actions.includes("IN_PROGRESS");
   const workActions: { kind: WorkAction; label: string; hint: string; icon: ReactNode }[] = status === "IN_PROGRESS"
@@ -289,7 +289,7 @@ function TicketWorkControl({
 export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset }) {
   const { can, hasRole, user } = useAuth();
   const companies = useCompanies();
-  const developers = useAssignableUsers(["DEVELOPER"], presetKey === "all");
+  const developers = useAssignableUsers(["DEVELOPER"], presetKey !== "unassigned");
   const isDeveloper = hasRole("DEVELOPER");
   const queryClient = useQueryClient();
   const preset = PRESETS[presetKey] ?? PRESETS.all;
@@ -316,16 +316,21 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [isUnassigned]);
-  const { filters, setFilters, clearFilters, activeCount } = useUrlFilters({ ordering: presetKey === "all" ? "effective_expected_closure_date" : "-created_at", limit: isUnassigned ? 6 : presetKey === "all" ? 8 : 25 });
-  const selectedLedgerScope = ledgerScope(filters.scope);
+  const { filters, setFilters, clearFilters, activeCount } = useUrlFilters({ ordering: isUnassigned ? "-created_at" : "effective_expected_closure_date", limit: isUnassigned ? 6 : 8 });
+  /* Every Ticket Management list uses the ledger design. Unassigned is the
+     one exception: it answers a different question (what arrived, from whom)
+     and keeps its intake layout. */
+  const isLedger = !isUnassigned;
+  const presetScopes = scopesForPreset(presetKey);
+  const selectedLedgerScope = ledgerScope(filters.scope, presetKey);
   const selectedIntakeView = intakeView(filters.intake_view);
   const queryParams = useMemo(() => {
     if (isUnassigned) return intakeParams(filters, selectedIntakeView);
-    if (presetKey === "all") return ledgerParams(filters);
+    if (isLedger) return ledgerParams(filters, selectedLedgerScope, preset.filters);
     return { ...filters, ...preset.filters, submodule: presetKey };
-  }, [filters, preset.filters, presetKey, isUnassigned, selectedIntakeView]);
-  const ledgerCounts = useQueries({ queries: presetKey === "all" ? ledgerScopes.map((scope) => {
-    const params = ledgerParams({ ...filters, status: "", page: 1, limit: 1 }, scope.key);
+  }, [filters, preset.filters, presetKey, isUnassigned, isLedger, selectedLedgerScope, selectedIntakeView]);
+  const ledgerCounts = useQueries({ queries: isLedger ? presetScopes.map((scope) => {
+    const params = ledgerParams({ ...filters, status: "", page: 1, limit: 1 }, scope.key, preset.filters);
     return { queryKey: queryKeys.tickets.list(params), queryFn: () => ticketApi.list(params), staleTime: 30_000, refetchInterval: 30_000, select: (response: { count: number }) => response.count };
   }) : [] });
   const intakeCounts = useQueries({ queries: isUnassigned ? intakeViews.map((view) => {
@@ -657,10 +662,10 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
             onClick={(event) => { event.stopPropagation(); openTicket(row.id); }}><LedgerText value={row.title} /></button>
           <div className="ledger-request-meta">
             <span className="font-mono">{row.reference}</span>
-            {row.company?.name || row.module?.name ? <LedgerText lines={1} value={[row.company?.name, row.module?.name].filter(Boolean).join(" / ")} /> : null}
+            {row.company?.name || row.module?.name ? <LedgerPlain lines={1} value={[row.company?.name, row.module?.name].filter(Boolean).join(" / ")} /> : null}
           </div>
           <p className="ledger-requester">
-            <LedgerText lines={1} value={`${row.reported_by_name || row.reported_by?.name || row.reported_by_email || "Unknown requester"}${row.project?.name ? ` / ${row.project.name}` : ""}`} />
+            <LedgerPlain lines={1} value={`${row.reported_by_name || row.reported_by?.name || row.reported_by_email || "Unknown requester"}${row.project?.name ? ` / ${row.project.name}` : ""}`} />
           </p>
         </div>
       ),
@@ -674,14 +679,14 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
     {
       key: "owner",
       header: "Owner / source",
-      align: "center",
+      align: "left",
       width: "w-[17%]",
       cell: (row) => (
         <div className="ledger-person">
           <span className="ledger-avatar" data-tone={(row.owner?.name || "").split("").reduce((sum, char) => sum + char.charCodeAt(0), 0) % 4} aria-hidden>{initials(row.owner?.name || "?")}</span>
           <span>
-            <strong><LedgerText lines={1} value={row.owner?.name || "Unassigned"} /></strong>
-            <small><LedgerText lines={1} value={`${ledgerSource(row.source)} / ${ledgerType(row.ticket_type)}`} /></small>
+            <strong><LedgerPlain lines={1} value={row.owner?.name || "Unassigned"} /></strong>
+            <small><LedgerPlain lines={1} value={`${ledgerSource(row.source)} / ${ledgerType(row.ticket_type)}`} /></small>
           </span>
         </div>
       ),
@@ -751,8 +756,10 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
 
   return (
     <div className={isUnassigned ? cn("ticket-intake-focus", compactIntake && "intake-density-compact", intakeColumns.includes("description") && "intake-with-description", user?.is_superuser && "intake-multi-company") : undefined}>
-      {presetKey === "all" ? <TicketLedgerWorkspace title={personalView ? "My tickets" : "All tickets"}
-        scope={selectedLedgerScope} counts={Object.fromEntries(ledgerScopes.map((scope, index) => [scope.key, ledgerCounts[index]?.data]))}
+      {isLedger ? <TicketLedgerWorkspace title={personalView && presetKey === "all" ? "My tickets" : preset.title}
+        showMetrics={presetKey === "all"}
+        scopes={presetScopes}
+        scope={selectedLedgerScope} counts={Object.fromEntries(presetScopes.map((scope, index) => [scope.key, ledgerCounts[index]?.data]))}
         filters={filters} setFilters={setFilters} resetFilters={clearFilters} companies={companies.data ?? []} developers={developers.data ?? []}
         canChooseCompany={Boolean(user?.is_superuser)}
         onExport={() => void exportLedger()} exporting={exporting} count={data?.count ?? 0} page={data?.page ?? filters.page} totalPages={data?.total_pages ?? 1}>
@@ -927,7 +934,7 @@ export function TicketListPage({ presetKey = "all" }: { presetKey?: TicketPreset
             ticketId={detailTicketId}
             showVerifyClose={presetKey === "testing"}
             initialAction={requestedAction}
-            variant={presetKey === "all" ? "ledger" : "default"}
+            variant={isLedger ? "ledger" : "default"}
             onStartWork={(ticket) => { setDetailTicketId(null); setTicketToStart(ticket); }}
             onEditWork={(ticket) => { setDetailTicketId(null); setEditingWork(ticket); }}
           />

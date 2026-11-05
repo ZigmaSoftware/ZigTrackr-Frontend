@@ -259,6 +259,46 @@
     font-family: var(--font-sans);
     font-size: 14px;
     -webkit-font-smoothing: antialiased;
+
+    /* "Noise wash": one faint brand gradient over the base colour. Fixed, so
+       it stays put while content scrolls rather than sliding with it. */
+    background-image: linear-gradient(
+      160deg,
+      color-mix(in oklab, var(--brand-600) 13%, var(--background)),
+      var(--background) 62%
+    );
+    background-attachment: fixed;
+  }
+
+  /* The grain is the point of this treatment: a large flat gradient bands
+     visibly on 6-bit panels, and a sparse noise layer breaks the bands up.
+     Painted on ::before so it never interferes with body's own background,
+     and pinned behind everything with a negative z-index. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.30;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+  }
+
+  /* Dark mode carries more grain: the same gradient over a near-black ground
+     bands harder than it does over near-white. */
+  .dark body::before {
+    opacity: 0.42;
+  }
+
+  /* Ink on paper. Neither the wash nor the grain should reach the printer. */
+  @media print {
+    body {
+      background-image: none;
+    }
+
+    body::before {
+      display: none;
+    }
   }
 
   /* A select showing its placeholder is greyed like an input placeholder, so

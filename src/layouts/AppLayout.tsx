@@ -57,7 +57,9 @@ export function AppLayout() {
 
   return (
     <Tooltip.Provider>
-      <div className="flex min-h-svh bg-[var(--background)]">
+      {/* Transparent, not --background: the body paints the noise wash, and an
+          opaque fill here would cover it. */}
+      <div className="flex min-h-svh">
         <Sidebar
           counts={counts}
           collapsed={collapsed}

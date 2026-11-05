@@ -4,6 +4,13 @@ import { cn } from "@/lib/utils";
 
 const PREVIEW_TOOLTIP_CLASS = "z-50 max-w-sm rounded-lg border border-sky-400/20 bg-slate-950 px-3 py-2 text-[12px] leading-5 text-white shadow-xl";
 
+/* The same clamped text without a tooltip. Reference numbers, company, module
+   and source are short and already fully visible, so a hover panel repeating
+   them is noise — only the free-text subject earns one. */
+export function LedgerPlain({ value, className, lines = 2 }: { value: string; className?: string; lines?: 1 | 2 }) {
+  return <span className={cn("ledger-clamped-text", className)} style={{ WebkitLineClamp: lines }}>{value}</span>;
+}
+
 export function LedgerText({ value, className, lines = 2 }: { value: string; className?: string; lines?: 1 | 2 }) {
   return <Tooltip.Root delayDuration={180}>
     <Tooltip.Trigger asChild><span tabIndex={0} className={cn("ledger-clamped-text", className)} style={{ WebkitLineClamp: lines }}>{value}</span></Tooltip.Trigger>

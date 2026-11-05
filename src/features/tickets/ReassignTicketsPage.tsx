@@ -1,64 +1,143 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ListFilter, UserRoundCog } from "lucide-react";
+import { CalendarDays, ListFilter, UserRoundCog } from "lucide-react";
 import { toast } from "sonner";
 import { ticketApi } from "@/api/services";
 import { apiErrorMessage } from "@/api/client";
 import { queryKeys } from "@/api/queryKeys";
-import { PageHeader } from "@/components/common/PageHeader";
-import { DataTable, TruncatedCell, type Column } from "@/components/tables/DataTable";
-import { Pagination } from "@/components/tables/Pagination";
+import { DataTable, type Column } from "@/components/tables/DataTable";
 import { Modal } from "@/components/feedback/Modal";
 import { ErrorState } from "@/components/feedback/states";
 import { Button, Card, IconButton, Input, Label, Select, Textarea } from "@/components/ui/primitives";
-import { cn } from "@/lib/utils";
-import { useAssignableUsers } from "@/hooks/useMasters";
+import { cn, initials } from "@/lib/utils";
+import { useAssignableUsers, useCompanies } from "@/hooks/useMasters";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
+import { useAuth } from "@/features/auth/AuthContext";
 import type { SupportTicketRow } from "@/types";
-import { DescriptionPreview, RequestPreview, TicketStatusBadge } from "@/features/tickets/TicketTableCells";
+import { LedgerPlain, LedgerPriority, LedgerStage, LedgerText } from "@/features/tickets/TicketTableCells";
+import { TicketEmailDescription } from "@/features/tickets/TicketEmailDescription";
+import { ledgerSource, ledgerType } from "./ticketLedger";
+import { TicketLedgerWorkspace } from "./TicketLedgerWorkspace";
 
-function TypeBadge({ type }: { type: string }) {
-  const tone = type === "BUG" ? "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300"
-    : type === "SERVICE_REQUEST" ? "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300"
-      : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
-  return <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium", tone)}>{type.replaceAll("_", " ")}</span>;
-}
-
-function SourceBadge({ source }: { source: string }) {
-  return <span className="inline-flex rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-300">
-    {source === "EMAIL" ? "Email" : source.replaceAll("_", " ")}
-  </span>;
-}
+/* The reassignable set is defined by policy, not by a stage, so this page
+   carries no scope tabs and no summary cards: just filters and the table. */
+const REASSIGN_SCOPES: { key: "all"; label: string }[] = [];
 
 const columns = (onChoose: (row: SupportTicketRow) => void): Column<SupportTicketRow>[] => [
-  { key: "reference", header: "Ticket", sortable: true, width: "w-36", cell: (row) => <span className="font-mono text-[12px] font-semibold text-[var(--primary)]">{row.reference}</span> },
-  { key: "title", header: "Request", sortable: true, width: "w-64", cell: (row) => <RequestPreview value={row.title} maxWidth="max-w-[240px]" /> },
-  { key: "description", header: "Description", width: "w-72", hideBelow: "xl", cell: (row) => <DescriptionPreview value={row.description} maxWidth="max-w-[280px]" /> },
-  { key: "ticket_type", header: "Type", width: "w-40", cell: (row) => <TypeBadge type={row.ticket_type} /> },
-  { key: "status", header: "Status", sortable: true, width: "w-40", cell: (row) => <TicketStatusBadge status={row.effective_status || row.status} /> },
-  { key: "source", header: "Source", width: "w-24", cell: (row) => <SourceBadge source={row.source} /> },
-  { key: "project_module", header: "Project / Module", hideBelow: "xl", cell: (row) =>
-    <TruncatedCell maxWidth="max-w-[180px]">{[row.project?.name, row.module?.name].filter(Boolean).join(" / ") || "-"}</TruncatedCell> },
-  { key: "owner", header: "Assigned to", width: "w-40", hideBelow: "md", cell: (row) => row.owner?.name ?? "Unassigned" },
-  { key: "action", header: "", align: "center", cell: (row) =>
-    <IconButton label="Reassign ticket" onClick={() => onChoose(row)}><UserRoundCog /></IconButton> },
+  {
+    key: "title",
+    header: "Request / project",
+    sortable: true,
+    width: "w-[25%]",
+    cell: (row) => (
+      <div className="ledger-request">
+        <button type="button" className="ledger-request-title" onClick={() => onChoose(row)}>
+          <LedgerText value={row.title} />
+        </button>
+        <div className="ledger-request-meta">
+          <span className="font-mono">{row.reference}</span>
+          {row.company?.name || row.module?.name
+            ? <LedgerText lines={1} value={[row.company?.name, row.module?.name].filter(Boolean).join(" / ")} />
+            : null}
+        </div>
+        <p className="ledger-requester">
+          <LedgerPlain lines={1} value={`${row.reported_by_name || row.reported_by?.name || row.reported_by_email || "Unknown requester"}${row.project?.name ? ` / ${row.project.name}` : ""}`} />
+        </p>
+      </div>
+    ),
+  },
+  {
+    key: "description",
+    header: "Description",
+    width: "w-[23%]",
+    cell: (row) => <TicketEmailDescription ticket={row} variant="ledger" />,
+  },
+  {
+    key: "owner",
+    header: "Owner / source",
+    align: "left",
+    width: "w-[17%]",
+    cell: (row) => (
+      <div className="ledger-person">
+        <span className="ledger-avatar" data-tone={(row.owner?.name || "").split("").reduce((sum, char) => sum + char.charCodeAt(0), 0) % 4} aria-hidden>{initials(row.owner?.name || "?")}</span>
+        <span>
+          <strong><LedgerPlain lines={1} value={row.owner?.name || "Unassigned"} /></strong>
+          <small><LedgerPlain lines={1} value={`${ledgerSource(row.source)} / ${ledgerType(row.ticket_type)}`} /></small>
+        </span>
+      </div>
+    ),
+  },
+  {
+    key: "status",
+    header: "Stage / priority",
+    sortable: true,
+    align: "center",
+    width: "w-[13%]",
+    cell: (row) => (
+      <div className="ledger-stage-stack">
+        <LedgerStage status={row.effective_status || row.status}
+          label={(row.effective_status || row.status) === "TESTING" ? "Under review" : undefined} />
+        {row.priority ? <LedgerPriority code={row.priority.code} label={row.priority.name} /> : null}
+      </div>
+    ),
+  },
+  {
+    key: "expected_closure_date",
+    header: "Delivery",
+    sortable: true,
+    align: "center",
+    width: "w-[12%]",
+    cell: (row) => {
+      const due = row.effective_expected_closure_date || row.expected_closure_date;
+      return (
+        <div className="ledger-stacked">
+          {due ? (
+            <span className={cn("ledger-due", row.is_overdue && "ledger-due-late")}
+              title={row.is_overdue ? `${row.overdue_days}d late` : undefined}>
+              <CalendarDays aria-hidden />
+              {new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(new Date(`${due}T00:00:00`))}
+            </span>
+          ) : <span className="text-[var(--muted-foreground)]">—</span>}
+          <span className="ledger-age">{row.age_days}d old{row.is_overdue ? " / Past due" : ""}</span>
+        </div>
+      );
+    },
+  },
+  {
+    key: "action",
+    header: "Reassign",
+    align: "right",
+    width: "w-[10%]",
+    cell: (row) => (
+      <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
+        <Button size="sm" variant="outline" onClick={() => onChoose(row)}>
+          <UserRoundCog /> Reassign
+        </Button>
+      </div>
+    ),
+  },
 ];
 
 export function ReassignTicketsPage() {
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [ordering, setOrdering] = useState("-created_at");
-  const [search, setSearch] = useState("");
-  const [ticketType, setTicketType] = useState("");
-  const [source, setSource] = useState("");
-  const [status, setStatus] = useState("");
+  const { user } = useAuth();
+  const { filters, setFilters, clearFilters } = useUrlFilters({ ordering: "effective_expected_closure_date", limit: 8 });
+  const companies = useCompanies();
+  const developers = useAssignableUsers(["DEVELOPER"], true);
   const [selected, setSelected] = useState<SupportTicketRow | null>(null);
   const [blocked, setBlocked] = useState<SupportTicketRow | null>(null);
   const [owner, setOwner] = useState("");
   const [reason, setReason] = useState("");
-  const params = { submodule: "reassign", reassignable: true, limit: pageSize, offset: (page - 1) * pageSize, search, ordering,
-    ...(ticketType ? { ticket_type: ticketType } : {}),
-    ...(source ? { source } : {}), ...(status ? { status } : {}) };
+  /* The reassignable set is defined by policy, not by a stage scope, so this
+     page carries no ledger_scope: the filters below are the whole selection. */
+  /* Empty strings are not "no filter" to django-filter: a blank ticket_type is
+     rejected as an invalid choice, which 400s the whole list. Drop them. */
+  const params = useMemo(() => {
+    const active = Object.fromEntries(
+      Object.entries(filters).filter(([, value]) => value !== "" && value !== undefined && value !== null),
+    );
+    return { ...active, submodule: "reassign", reassignable: true };
+  }, [filters]);
   const list = useQuery({
     queryKey: queryKeys.tickets.list(params),
     queryFn: () => ticketApi.list(params),
@@ -88,41 +167,26 @@ export function ReassignTicketsPage() {
 
   return (
     <>
-      <PageHeader title="Reassign Tickets" description="Move tickets to another developer before rectification or when work returns to development."
-        breadcrumbs={[{ label: "Ticket Creation" }, { label: "Reassign Tickets" }]} />
       {list.isError ? <ErrorState onRetry={() => list.refetch()} /> : (
-        <Card className="overflow-hidden">
-          <div className="grid gap-3 border-b border-[var(--border)] p-3 md:grid-cols-[minmax(240px,1fr)_170px_150px_170px]">
-            <Input type="search" aria-label="Search assigned tickets" placeholder="Search ticket, sender, subject..." value={search}
-              onChange={(event) => { setSearch(event.target.value); setPage(1); }} />
-            <Select aria-label="Ticket type" value={ticketType} onChange={(event) => { setTicketType(event.target.value); setPage(1); }}>
-              <option value="">All types</option><option value="BUG">Bug</option><option value="SERVICE_REQUEST">Service Request</option><option value="ACCESS_REQUEST">Access Request</option>
-            </Select>
-            <Select aria-label="Ticket source" value={source} onChange={(event) => { setSource(event.target.value); setPage(1); }}>
-              <option value="">All sources</option><option value="EMAIL">Email</option><option value="MANUAL">Manual</option><option value="WHATSAPP">WhatsApp</option>
-            </Select>
-            <div className="flex gap-2">
-              <Select aria-label="Ticket status" className="min-w-0 flex-1" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}>
-                <option value="">All statuses</option>
-                <option value="NEW">New</option><option value="CONFIRMED">Confirmed</option>
-                <option value="ASSIGNED">Assigned</option><option value="IN_PROGRESS">In Progress</option>
-                <option value="PENDING">Pending</option><option value="ON_HOLD">On Hold</option>
-                <option value="REOPENED">Reopened</option>
-                <option value="PENDING_APPROVAL">Pending Approval</option><option value="APPROVED">Approved</option>
-              </Select>
-              <Button variant="outline" size="sm" title="Clear filters" aria-label="Clear filters" onClick={() => { setSearch(""); setTicketType(""); setSource(""); setStatus(""); setPage(1); }}>
-                <ListFilter /> <span className="hidden lg:inline">Clear</span>
-              </Button>
-            </div>
-          </div>
-          <DataTable columns={columns(choose)} rows={list.data?.results ?? []}
-            rowKey={(row) => row.id} isLoading={list.isLoading} ordering={ordering}
-            onOrderingChange={(value) => { setOrdering(value); setPage(1); }}
-            emptyTitle="No reassignable tickets" />
-          <Pagination page={page} totalPages={list.data?.total_pages ?? 1}
-            count={list.data?.count ?? 0} pageSize={pageSize}
-            onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} />
-        </Card>
+        <TicketLedgerWorkspace
+          title="Reassign tickets"
+          breadcrumb={["Ticket creation", "Reassign tickets"]}
+          description="Move tickets to another developer before rectification or when work returns to development."
+          scopes={REASSIGN_SCOPES}
+          scope="all"
+          counts={{ all: list.data?.count ?? 0 }}
+          filters={filters} setFilters={setFilters} resetFilters={clearFilters}
+          companies={companies.data ?? []} developers={developers.data ?? []}
+          canChooseCompany={Boolean(user?.is_superuser)}
+          count={list.data?.count ?? 0}
+          page={list.data?.page ?? filters.page}
+          totalPages={list.data?.total_pages ?? 1}>
+          <DataTable columns={columns(choose)} rows={list.data?.results ?? []} layout="fit" stickyHeader={false}
+            rowKey={(row) => row.id} isLoading={list.isLoading} skeletonRows={8}
+            onRowClick={(row) => choose(row)}
+            emptyTitle="No reassignable tickets"
+            emptyDescription="Tickets appear here once they are assigned and still open." />
+        </TicketLedgerWorkspace>
       )}
 
       <Modal open={Boolean(blocked)} onOpenChange={() => setBlocked(null)}

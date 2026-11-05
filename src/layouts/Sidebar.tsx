@@ -87,19 +87,6 @@ export function Sidebar({
   // Close the mobile drawer whenever navigation happens (spec 48).
   useEffect(() => { onMobileOpenChange(false); }, [location.pathname]);
 
-  // "/" focuses menu search, the way a power user expects.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      const typing = target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
-      if (event.key === "/" && !typing && !collapsed) {
-        event.preventDefault();
-        searchRef.current?.focus();
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [collapsed]);
 
   function toggleGroup(id: string) {
     setExpanded((current) =>
@@ -159,25 +146,6 @@ export function Sidebar({
             <X className="size-4" aria-hidden />
           </button>
         </div>
-
-        {/* ---- MENU SEARCH (spec 17.4) ---- */}
-        {!collapsed ? (
-          <div className="px-3 py-2.5">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--muted-foreground)]" aria-hidden />
-              <input
-                ref={searchRef}
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search menu…  /"
-                aria-label="Search menu"
-                className="h-8 w-full rounded-md border border-[var(--input)] bg-[var(--background)] pl-8 pr-2 text-[13px]
-                           placeholder:text-[var(--muted-foreground)] focus-visible:border-[var(--ring)]"
-              />
-            </div>
-          </div>
-        ) : null}
 
         <nav className="flex-1 overflow-y-auto px-3 pb-5 pt-1">
           {/* ---- SEARCH RESULTS ---- */}

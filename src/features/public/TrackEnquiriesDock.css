@@ -1,0 +1,30 @@
+.track-enquiries{position:fixed;right:max(24px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));z-index:40;text-align:left}
+.track-enquiries-trigger{display:flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:12px 16px;border:1px solid var(--line);border-radius:6px;background:var(--white);color:var(--blue);font-size:12px;font-weight:600;box-shadow:0 6px 22px #17314c14;cursor:pointer;transition:transform .18s,box-shadow .18s,background .18s}
+.track-enquiries-trigger:hover{background:var(--soft);transform:translateY(-3px);box-shadow:0 10px 24px #17314c25}
+.track-enquiries-panel{width:min(308px,calc(100vw - 32px));max-height:var(--radix-popover-content-available-height);overflow:auto;overscroll-behavior:contain;border:1px solid var(--line);border-radius:8px;background:var(--white);color:var(--ink);box-shadow:0 12px 45px #17314c1c;transform-origin:var(--radix-popover-content-transform-origin);outline:none;text-align:left}
+.track-enquiries-panel[data-state=open]{animation:track-enquiries-enter .25s cubic-bezier(.2,.8,.2,1)}
+.track-enquiries-panel[data-state=closed]{animation:track-enquiries-exit .13s ease-in}
+.track-enquiries-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:23px 20px;border-bottom:1px solid var(--line);background:var(--soft)}
+.track-enquiries-heading h2{margin:0;font-size:20px;line-height:1.4;font-weight:500}
+.track-enquiries-heading p{margin:5px 0 0;font-size:11px;line-height:1.6;color:var(--muted)}
+.track-enquiries-close{flex:none;display:grid;place-items:center;width:26px;height:26px;border:1px solid var(--line);border-radius:4px;background:var(--white);color:var(--ink);cursor:pointer}
+.track-enquiries-close:hover{background:var(--soft);color:var(--blue)}
+.track-enquiries-list{list-style:none;margin:0;padding:6px 18px}
+.track-enquiries-contact{display:grid;grid-template-columns:25px minmax(0,1fr) 30px;align-items:center;gap:14px;padding:17px 0;transition:background .18s}
+.track-enquiries-contact+.track-enquiries-contact{border-top:1px solid var(--line)}
+.track-enquiries-level{position:relative;display:grid;place-items:center;width:25px;height:28px;padding-left:5px;font-size:10px;font-weight:700;color:var(--muted);transition:color .2s}
+.track-enquiries-level::before{content:"";position:absolute;left:0;top:-5px;bottom:-5px;width:3px;border-radius:2px;background:var(--blue);opacity:.4;transform:scaleY(.55);transition:transform .25s,opacity .25s}
+.track-enquiries-contact strong{display:block;font-size:12px;line-height:1.5;font-weight:600}
+.track-enquiries-number{display:block;margin-top:5px;color:var(--muted);font-size:11px;line-height:1.5;text-decoration:none;font-variant-numeric:tabular-nums;white-space:nowrap}
+.track-enquiries-number:hover{color:var(--blue);text-decoration:none}
+.track-enquiries-call{display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--line);border-radius:5px;background:var(--white);color:var(--blue);transition:background .2s,border-color .2s,box-shadow .2s,transform .2s}
+.track-enquiries-contact:is(:hover,:focus-within) .track-enquiries-level{color:var(--blue)}
+.track-enquiries-contact:is(:hover,:focus-within) .track-enquiries-level::before{opacity:1;transform:scaleY(1)}
+.track-enquiries-contact:is(:hover,:focus-within) .track-enquiries-call{background:var(--soft);border-color:var(--blue);box-shadow:0 3px 9px #0066d81a;transform:translateY(-2px) rotate(-10deg)}
+.track-enquiries-call:active{transform:scale(.95)}
+.track-enquiries-note{margin:0;padding:11px 18px;border-top:1px solid var(--line);font-size:10px;line-height:1.6;color:var(--muted)}
+.track-enquiries a:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:4px}
+@keyframes track-enquiries-enter{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes track-enquiries-exit{from{opacity:1;transform:none}to{opacity:0;transform:translateY(8px)}}
+@media(max-width:600px){.track-enquiries{right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom))}.track-page.has-ticket .track-footer{margin-bottom:64px}}
+@media(prefers-reduced-motion:reduce){.track-enquiries *,.track-enquiries *::before{animation:none!important;transition:none!important}.track-enquiries-trigger:hover,.track-enquiries-contact:is(:hover,:focus-within) .track-enquiries-call{transform:none}}

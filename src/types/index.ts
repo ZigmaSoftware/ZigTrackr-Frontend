@@ -56,6 +56,8 @@ export interface BugListRow {
   age_days: number;
   aging_band: AgingBand;
   expected_closure_date: string | null;
+  /* "HH:MM:SS" from the API; null on tickets predating the field. */
+  expected_closure_time: string | null;
   is_overdue: boolean;
   overdue_days: number;
   is_update_pending: boolean;
@@ -138,6 +140,8 @@ export interface SupportTicketRow {
   bug_id: string | null;
   expected_closure_date?: string | null;
   effective_expected_closure_date?: string | null;
+  expected_closure_time?: string | null;
+  effective_expected_closure_time?: string | null;
   age_days: number;
   is_overdue: boolean;
   overdue_days: number;

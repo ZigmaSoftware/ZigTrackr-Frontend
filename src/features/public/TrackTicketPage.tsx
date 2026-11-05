@@ -9,6 +9,7 @@ import { mergeChatMessages } from "@/lib/ticketChat";
 import { formatDateTime } from "@/lib/dates";
 import { TicketChat } from "@/components/chat/TicketChat";
 import { SignalPathsBackground } from "./SignalPathsBackground";
+import { TrackEnquiriesDock } from "./TrackEnquiriesDock";
 import "./TrackTicketPage.css";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -518,6 +519,7 @@ export function TrackTicketPage() {
       </div>
     </main>
     <footer className="track-footer"><span>Secure support tracking</span></footer>
+    {signedIn ? <TrackEnquiriesDock /> : null}
   </div></div>;
 }
 
